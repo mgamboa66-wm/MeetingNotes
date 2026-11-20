@@ -13,6 +13,8 @@ dist-ssr
 *.local
 native/build/
 native/windows/build/
+__pycache__/
+*.py[cod]
 *.dSYM/
 /recordings/
 

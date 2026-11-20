@@ -115,27 +115,30 @@ function consumeHelperOutput(process: ReturnType<typeof Bun.spawn>) {
 async function startCapture() {
   if (helper && helper.exitCode === null) return state
 
-  const helperPath = process.platform === 'darwin'
-    ? fileURLToPath(new URL('../../native/build/MeetingNotesAudioCapture.app/Contents/MacOS/MeetingNotesAudioCapture', import.meta.url))
+  const helperCommand = process.platform === 'darwin'
+    ? [fileURLToPath(new URL('../../native/build/MeetingNotesAudioCapture.app/Contents/MacOS/MeetingNotesAudioCapture', import.meta.url)), recordingsDirectory]
     : process.platform === 'win32'
-      ? fileURLToPath(new URL('../../native/windows/build/MeetingNotesAudioCapture.exe', import.meta.url))
+      ? ['py', '-3.11', '-u', fileURLToPath(new URL('../../native/windows/AudioCapture.py', import.meta.url)), recordingsDirectory]
       : null
-  if (!helperPath) {
+  if (!helperCommand) {
     updateState({ state: 'error', level: 0, message: 'La POC solo tiene capturadores para macOS y Windows.' })
     return state
   }
 
   try {
-    helper = Bun.spawn([helperPath, recordingsDirectory], {
+    helper = Bun.spawn(helperCommand, {
       stdin: 'pipe',
       stdout: 'pipe',
       stderr: 'inherit',
     })
   } catch (error) {
+    const errorCode = typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined
     updateState({
       state: 'error',
       level: 0,
-      message: error instanceof Error ? error.message : 'No se pudo abrir el helper de captura.',
+      message: process.platform === 'win32' && errorCode === 'ENOENT'
+        ? 'No se encontró Python 3.11. Instálalo y verifica que el lanzador py esté disponible.'
+        : error instanceof Error ? error.message : 'No se pudo abrir el helper de captura.',
     })
     return state
   }

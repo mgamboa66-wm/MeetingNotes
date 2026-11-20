@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "poc-macos-audio",
+      "name": "poc-record-audio",
       "dependencies": {
         "@tailwindcss/vite": "^4.3.5",
         "@tanstack/react-query": "^5.108.1",
