@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>MeetingNotesAudioCapture</string>
+	<key>CFBundleIdentifier</key>
+	<string>local.meetingnotes.openai-poc</string>
+	<key>CFBundleName</key>
+	<string>MeetingNotes OpenAI POC</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>MeetingNotes captura el audio del sistema y lo envía a OpenAI para transcribirlo y generar notas.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>MeetingNotes combina el micrófono con el audio del sistema para generar una transcripción, resumen y TODOs con OpenAI.</string>
+</dict>
+</plist>

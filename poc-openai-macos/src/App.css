@@ -1,0 +1,45 @@
+.page-shell { width: min(920px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 64px; }
+.topbar, .brand, .status-pill, .action-row, .todo-meta, .section-heading { display: flex; align-items: center; }
+.topbar, .section-heading { justify-content: space-between; }
+.topbar { margin-bottom: 48px; }
+.brand { gap: 11px; font-size: 15px; font-weight: 750; }
+.brand-mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 11px; color: #fff; background: #3658d4; font-weight: 800; }
+.local-badge, .status-pill { display: flex; align-items: center; gap: 8px; border: 1px solid #dde3ee; border-radius: 999px; background: #fff; color: #526078; font-size: 12px; font-weight: 650; padding: 8px 12px; }
+.local-dot, .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #4dba86; }
+.hero { max-width: 700px; margin-bottom: 24px; }
+.eyebrow, .card-kicker { margin: 0 0 12px; color: #5269c8; font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+h1 { margin: 0; color: #142039; font-size: clamp(32px, 5vw, 48px); letter-spacing: -.055em; line-height: 1.05; }
+.intro { margin: 16px 0 0; color: #59667c; font-size: 16px; line-height: 1.65; }
+.privacy-note, .card, .result-card { border: 1px solid #e0e6f0; border-radius: 18px; background: #fff; box-shadow: 0 12px 32px rgb(28 45 86 / 5%); }
+.privacy-note { margin-bottom: 18px; padding: 14px 17px; color: #59667c; font-size: 13px; line-height: 1.55; }
+.card, .result-card { padding: 24px; }
+.capture-card { margin-bottom: 18px; }
+.section-heading { gap: 16px; margin-bottom: 20px; }
+.section-heading h2, .result-card h2 { margin: 0; color: #17233c; font-size: 20px; letter-spacing: -.03em; }
+.card-kicker { margin-bottom: 7px; font-size: 10px; }
+.status-pill { flex: 0 0 auto; }
+.status-pill[data-status="error"] .status-dot { background: #db5a5a; }
+.status-pill[data-status="transcribing"] .status-dot, .status-pill[data-status="summarizing"] .status-dot, .status-pill[data-status="starting"] .status-dot, .status-pill[data-status="stopping"] .status-dot { background: #e6a539; }
+.meter-wrap { margin: 20px 0; }
+.meter-track { height: 9px; overflow: hidden; border-radius: 999px; background: #edf0f6; }
+.meter-fill { height: 100%; border-radius: inherit; background: #6480ed; transition: width 120ms linear; }
+.meter-scale { display: flex; justify-content: space-between; margin-top: 7px; color: #8390a5; font-size: 11px; }
+.action-row { flex-wrap: wrap; gap: 10px; }
+.button { min-height: 42px; border: 1px solid transparent; border-radius: 11px; padding: 0 16px; cursor: pointer; font-weight: 700; }
+.button:disabled { cursor: not-allowed; opacity: .48; }
+.button-primary { color: #fff; background: #3658d4; }
+.button-secondary { border-color: #d9e0eb; color: #34415b; background: #fff; }
+.helper-message, .error-message, .config-message { margin: 14px 0 0; color: #657188; font-size: 13px; line-height: 1.55; }
+.error-message { color: #ad3434; }
+.config-message { border-radius: 10px; padding: 12px 14px; color: #70521a; background: #fff8e6; }
+.result-card { margin-top: 18px; }
+.result-card h2 { margin-bottom: 12px; }
+.summary-text { color: #48556c; font-size: 15px; line-height: 1.7; white-space: pre-wrap; }
+.todo-list { display: grid; gap: 12px; margin: 16px 0 0; padding: 0; list-style: none; }
+.todo-item { border: 1px solid #e4e9f2; border-radius: 13px; padding: 15px; background: #fcfdff; }
+.todo-title { margin: 0 0 10px; color: #202d46; font-weight: 700; line-height: 1.5; }
+.todo-meta { flex-wrap: wrap; gap: 8px; }
+.todo-tag { border-radius: 999px; padding: 5px 9px; color: #586780; background: #eef2f8; font-size: 12px; }
+.empty-state, .footer-note { color: #68758a; font-size: 13px; line-height: 1.6; }
+.footer-note { margin: 22px 2px 0; color: #77839a; font-size: 12px; }
+@media (max-width: 600px) { .page-shell { width: calc(100% - 22px); padding-top: 18px; } .topbar { margin-bottom: 36px; } .card, .result-card { padding: 18px; } .section-heading { align-items: flex-start; flex-direction: column; } .button { width: 100%; } }
