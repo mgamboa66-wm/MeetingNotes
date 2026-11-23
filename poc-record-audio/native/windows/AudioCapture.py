@@ -71,23 +71,39 @@ def downmix_to_mono(data: bytes, channels: int) -> array.array:
     return mono
 
 
-def resample_linear(samples: array.array, source_rate: int) -> array.array:
-    if not samples or source_rate == OUTPUT_RATE:
-        return samples
-    if source_rate < 1:
-        raise CaptureError("El dispositivo devolvió una frecuencia de muestreo inválida.")
+class LinearResampler:
+    """Preserves interpolation phase across callback blocks."""
 
-    output_frames = max(1, round(len(samples) * OUTPUT_RATE / source_rate))
-    converted = array.array("h")
-    last_index = len(samples) - 1
-    for output_index in range(output_frames):
-        position = output_index * source_rate / OUTPUT_RATE
-        left = min(int(position), last_index)
-        right = min(left + 1, last_index)
-        fraction = position - left
-        value = samples[left] + (samples[right] - samples[left]) * fraction
-        converted.append(max(-32768, min(32767, int(value))))
-    return converted
+    def __init__(self, source_rate: int) -> None:
+        if source_rate < 1:
+            raise CaptureError("El dispositivo devolvió una frecuencia de muestreo inválida.")
+        self.source_rate = source_rate
+        self.step = source_rate / OUTPUT_RATE
+        self.position = 0.0
+        self.previous_sample: int | None = None
+
+    def process(self, samples: array.array) -> array.array:
+        if not samples or self.source_rate == OUTPUT_RATE:
+            return samples
+
+        combined = array.array("h")
+        if self.previous_sample is not None:
+            combined.append(self.previous_sample)
+        combined.extend(samples)
+
+        converted = array.array("h")
+        last_position = len(combined) - 1
+        while self.position < last_position:
+            left = int(self.position)
+            right = left + 1
+            fraction = self.position - left
+            value = combined[left] + (combined[right] - combined[left]) * fraction
+            converted.append(max(-32768, min(32767, int(value))))
+            self.position += self.step
+
+        self.position -= last_position
+        self.previous_sample = samples[-1]
+        return converted
 
 
 class CaptureSession:
@@ -112,6 +128,11 @@ class CaptureSession:
         self.failure_event = threading.Event()
         self.failure_lock = threading.Lock()
         self.failure: str | None = None
+        self.callback_status_lock = threading.Lock()
+        self.callback_status_counts: dict[str, dict[int, int]] = {
+            "system": {},
+            "microphone": {},
+        }
         self.level_lock = threading.Lock()
         self.latest_rms = 0.0
         self.frames_written = 0
@@ -152,6 +173,117 @@ class CaptureSession:
             raise CaptureError(f"El dispositivo de {label} devolvió una frecuencia inválida.")
         return rate
 
+    def _preferred_capture_rate(
+        self,
+        device: dict[str, object],
+        channels: int,
+        default_rate: int,
+        label: str,
+    ) -> int:
+        if default_rate == OUTPUT_RATE:
+            return OUTPUT_RATE
+        if self.audio is None:
+            raise CaptureError("PyAudioWPatch no está inicializado.")
+
+        try:
+            supported = self.audio.is_format_supported(
+                OUTPUT_RATE,
+                input_device=int(device["index"]),
+                input_channels=channels,
+                input_format=pyaudio.paInt16,
+            )
+        except Exception as error:
+            print(
+                f"No se pudo confirmar captura a {OUTPUT_RATE} Hz para {label} ({error}); "
+                f"se usará la frecuencia predeterminada de {default_rate} Hz.",
+                file=sys.stderr,
+                flush=True,
+            )
+            return default_rate
+
+        if supported:
+            return OUTPUT_RATE
+
+        print(
+            f"{label} no admite {OUTPUT_RATE} Hz; se usará la frecuencia predeterminada "
+            f"de {default_rate} Hz y el helper la convertirá.",
+            file=sys.stderr,
+            flush=True,
+        )
+        return default_rate
+
+    def _open_input_stream(
+        self,
+        source: str,
+        device: dict[str, object],
+        channels: int,
+        capture_rate: int,
+        default_rate: int,
+        label: str,
+    ) -> tuple[object, int]:
+        if self.audio is None:
+            raise CaptureError("PyAudioWPatch no está inicializado.")
+
+        def open_at_rate(rate: int):
+            return self.audio.open(
+                format=pyaudio.paInt16,
+                channels=channels,
+                rate=rate,
+                input=True,
+                input_device_index=int(device["index"]),
+                frames_per_buffer=FRAMES_PER_BUFFER,
+                stream_callback=self._callback(source, channels, rate),
+                start=False,
+            )
+
+        try:
+            return open_at_rate(capture_rate), capture_rate
+        except Exception as error:
+            if capture_rate == default_rate:
+                raise CaptureError(f"No se pudo abrir {label}: {error}") from error
+
+            print(
+                f"No se pudo abrir {label} a {capture_rate} Hz ({error}); "
+                f"se intentará con la frecuencia predeterminada de {default_rate} Hz.",
+                file=sys.stderr,
+                flush=True,
+            )
+            try:
+                return open_at_rate(default_rate), default_rate
+            except Exception as fallback_error:
+                raise CaptureError(
+                    f"No se pudo abrir {label} a {capture_rate} Hz ni a {default_rate} Hz: "
+                    f"{fallback_error}"
+                ) from fallback_error
+
+    def _record_callback_status(self, source: str, status_flags: int) -> None:
+        flags = int(status_flags)
+        if flags == 0:
+            return
+        with self.callback_status_lock:
+            counts = self.callback_status_counts[source]
+            counts[flags] = counts.get(flags, 0) + 1
+
+    def _log_callback_status(self) -> None:
+        with self.callback_status_lock:
+            counts_by_source = {
+                source: dict(counts)
+                for source, counts in self.callback_status_counts.items()
+            }
+
+        for source, counts in counts_by_source.items():
+            if not counts:
+                continue
+            summary = ", ".join(
+                f"0x{flags:X}: {count} callback(s)"
+                for flags, count in sorted(counts.items())
+            )
+            print(
+                f"PortAudio status_flags en {source}: {summary}",
+                file=sys.stderr,
+                flush=True,
+            )
+
     @staticmethod
     def _chunk_start_time(time_info: dict[str, float], frame_count: int, source_rate: int) -> float:
         now = time.perf_counter()
@@ -166,14 +298,18 @@ class CaptureSession:
         return now - (frame_count / max(source_rate, 1))
 
     def _callback(self, source: str, channels: int, source_rate: int):
+        resampler = LinearResampler(source_rate)
+
         def callback(in_data, frame_count, time_info, status_flags):
             if self.stop_requested.is_set() or self.failure_event.is_set():
                 return (None, pyaudio.paComplete)
             try:
+                if status_flags:
+                    self._record_callback_status(source, status_flags)
                 if in_data is None:
                     raise CaptureError("El dispositivo no entregó datos de audio.")
                 mono = downmix_to_mono(in_data, channels)
-                converted = resample_linear(mono, source_rate)
+                converted = resampler.process(mono)
                 if converted:
                     chunk = AudioChunk(
                         start_time=self._chunk_start_time(time_info or {}, frame_count, source_rate),
@@ -215,38 +351,62 @@ class CaptureSession:
 
             system_channels = self._device_channels(system_device, "la salida del sistema")
             microphone_channels = self._device_channels(microphone_device, "el micrófono")
-            system_rate = self._device_rate(system_device, "la salida del sistema")
-            microphone_rate = self._device_rate(microphone_device, "el micrófono")
+            system_default_rate = self._device_rate(system_device, "la salida del sistema")
+            microphone_default_rate = self._device_rate(microphone_device, "el micrófono")
+            system_rate = self._preferred_capture_rate(
+                system_device,
+                system_channels,
+                system_default_rate,
+                "la salida del sistema",
+            )
+            microphone_rate = self._preferred_capture_rate(
+                microphone_device,
+                microphone_channels,
+                microphone_default_rate,
+                "el micrófono",
+            )
 
             try:
-                system_stream = self.audio.open(
-                    format=pyaudio.paInt16,
-                    channels=system_channels,
-                    rate=system_rate,
-                    input=True,
-                    input_device_index=int(system_device["index"]),
-                    frames_per_buffer=FRAMES_PER_BUFFER,
-                    stream_callback=self._callback("system", system_channels, system_rate),
-                    start=False,
+                system_stream, system_rate = self._open_input_stream(
+                    "system",
+                    system_device,
+                    system_channels,
+                    system_rate,
+                    system_default_rate,
+                    "el loopback de la salida predeterminada",
                 )
             except Exception as error:
+                if isinstance(error, CaptureError):
+                    raise
                 raise CaptureError(f"No se pudo abrir el loopback de la salida predeterminada: {error}") from error
             self.streams.append(system_stream)
 
             try:
-                microphone_stream = self.audio.open(
-                    format=pyaudio.paInt16,
-                    channels=microphone_channels,
-                    rate=microphone_rate,
-                    input=True,
-                    input_device_index=int(microphone_device["index"]),
-                    frames_per_buffer=FRAMES_PER_BUFFER,
-                    stream_callback=self._callback("microphone", microphone_channels, microphone_rate),
-                    start=False,
+                microphone_stream, microphone_rate = self._open_input_stream(
+                    "microphone",
+                    microphone_device,
+                    microphone_channels,
+                    microphone_rate,
+                    microphone_default_rate,
+                    "el micrófono predeterminado",
                 )
             except Exception as error:
+                if isinstance(error, CaptureError):
+                    raise
                 raise CaptureError(f"No se pudo abrir el micrófono predeterminado: {error}") from error
             self.streams.append(microphone_stream)
+
+            print(
+                f"Audio Windows: sistema default={system_default_rate} Hz, "
+                f"captura={system_rate} Hz, canales={system_channels}, "
+                f"remuestreo Python={'sí' if system_rate != OUTPUT_RATE else 'no'}; "
+                f"micrófono default={microphone_default_rate} Hz, "
+                f"captura={microphone_rate} Hz, canales={microphone_channels}, "
+                f"remuestreo Python={'sí' if microphone_rate != OUTPUT_RATE else 'no'}; "
+                f"WAV={OUTPUT_RATE} Hz mono.",
+                file=sys.stderr,
+                flush=True,
+            )
 
             self.wave_file = wave.open(str(self.recording_path), "wb")
             self.wave_file.setnchannels(1)
@@ -374,6 +534,8 @@ class CaptureSession:
                     stream.stop_stream()
             except Exception as error:
                 print(f"Error al detener un flujo de audio: {error}", file=sys.stderr, flush=True)
+
+        self._log_callback_status()
 
         self.capture_finished.set()
         self.mixer_wakeup.set()
