@@ -1,60 +1,72 @@
 # MeetingNotes
 
-MeetingNotes busca ayudar a crear notas de conversaciones de reuniones a partir del audio de la computadora.
+MeetingNotes convierte conversaciones de reuniones en un resumen y una lista de pendientes usando el audio de la computadora.
 
-## Estado
+## Estado del proyecto
 
-El proyecto está en etapa inicial. El stack técnico base está aprobado; el alcance funcional y varias decisiones de implementación siguen pendientes. El repositorio conserva dos POCs independientes y todavía no tiene una aplicación de producto integrada ni un workspace raíz.
+El alcance de producto de v1 está aprobado y se describe en [docs/MEETINGNOTES_V1_SCOPE.md](docs/MEETINGNOTES_V1_SCOPE.md). El producto será una aplicación local para macOS y Windows, con historial local en SQLite y procesamiento con OpenAI. El alcance no equivale a un plan técnico de implementación ni significa que la aplicación integrada ya exista.
+
+El repositorio contiene dos POCs independientes. Todavía no contiene una aplicación de producto integrada ni un manifiesto raíz de dependencias o workspace. El contrato API y la guía para frontend son propuestas de trabajo alineadas al alcance aprobado.
+
+## Alcance aprobado de v1
+
+- Capturar localmente el audio del sistema y el micrófono y combinarlos en una sola pista.
+- Mostrar un aviso de consentimiento visible y persistente; el aviso no verifica por sí mismo el consentimiento de participantes.
+- Enviar el audio a OpenAI para transcribirlo y procesar la transcripción con OpenAI para generar el resumen y los pendientes. La persona usuaria elige español o inglés por reunión.
+- Guardar localmente el título, idioma, resumen y pendientes. No guardar la transcripción en el historial.
+- Si el procesamiento termina correctamente, borrar las copias locales del audio y la transcripción. Si falla, descartar la transcripción y conservar el audio sin vencimiento automático hasta que se reintente o se elimine manualmente.
+- Permitir consultar y editar título, resumen y pendientes, y eliminar una reunión junto con todos sus pendientes.
+- No ofrecer cuentas, login, nube ni sincronización entre computadoras.
+
+El documento de alcance aprobado contiene las reglas de negocio completas, compatibilidad, costos y límites de v1.
 
 ## Estructura
 
-```text
-apps/
-  api/                 # espacio reservado para la API del producto
-  web/                 # espacio reservado para la interfaz del producto
-  prototypes/          # POCs independientes con configuración propia
-packages/
-  contracts/           # espacio reservado para contratos compartidos
-tests/                 # espacio reservado para pruebas
-docs/
-  decisions/           # espacio para decisiones aprobadas
-  plans/               # espacio para planes revisados
-  API_CONTRACT.md      # propuesta de contrato de API
-  FRONTEND_API_GUIDE.md
-  MEETINGNOTES_V1_CONTEXT_TEMP.md
-```
+    apps/
+      api/                 # reservado para la API del producto, aún no integrada
+      web/                 # reservado para la interfaz del producto, aún no integrada
+      prototypes/          # dos POCs independientes con configuración propia
+    packages/
+      contracts/           # reservado para contratos compartidos
+    tests/                 # reservado; sin suite del producto
+    docs/
+      api/
+        API_CONTRACT.md    # propuesta técnica de contrato API
+      FRONTEND_API_GUIDE.md
+      MEETINGNOTES_V1_SCOPE.md
+      plans/               # planes con estados individuales
 
-Los espacios reservados están vacíos; su presencia organiza el repositorio y no significa que la aplicación, los workspaces o las decisiones descritas en propuestas estén implementados o aprobados.
+Los directorios reservados no significan que la aplicación, el workspace o la arquitectura estén implementados o aprobados.
 
-Contenido de `apps/prototypes/`:
+POCs con código:
 
-- `apps/prototypes/poc-record-audio/`: experimento de captura local para macOS y Windows.
-- `apps/prototypes/poc-openai-macos/`: experimento macOS de transcripción y generación de notas con OpenAI.
-- `apps/prototypes/poc-macos-audio/`: solo contiene caché de Vite; no tiene código fuente.
+- **apps/prototypes/poc-record-audio/**: experimento de captura local para macOS y Windows.
+- **apps/prototypes/poc-openai-macos/**: experimento macOS de transcripción y generación de notas con OpenAI.
 
-Los dos POCs con código conservan su propio manifiesto, lockfile e instrucciones en su `README.md`. No existe un manifiesto ni lockfile consolidado en la raíz.
+Cada POC conserva su propio manifiesto, lockfile e instrucciones en su README. No hay un manifiesto ni lockfile consolidado en la raíz.
 
 ## Stack técnico aprobado
 
-- **Frontend:** React con TypeScript estricto. Vike (`vike-react`) se recomienda para rutas basadas en archivos y permite SSR, SPA o SSG según las necesidades. Vite es su motor integrado y normalmente no se configura por separado.
+- **Frontend:** React con TypeScript estricto. Vike (vike-react) se recomienda para rutas basadas en archivos y permite SSR, SPA o SSG según las necesidades. Vite es su motor integrado y normalmente no se configura por separado.
 - **Backend:** Bun + Hono.
-- **Datos:** Drizzle + SQL. La base de datos está pendiente de elección entre SQLite —con `better-sqlite3` o la integración de Bun— y PostgreSQL. MongoDB requiere aprobación adicional.
-- **IA y validación:** Vercel AI SDK (`ai`) y Zod para validar datos y esquemas de herramientas. El SDK no define por sí mismo el proveedor o modelo de transcripción.
-- **Interfaz y estado remoto:** Tailwind CSS y TanStack Query con `fetch` nativo. Zustand se usará solo si React Context no resulta suficiente.
-- **Autenticación en la nube:** las aplicaciones que se desplieguen en la nube usarán el gateway SSO compartido. El despliegue en la nube y los detalles de integración aún no están definidos.
+- **Datos:** Drizzle + SQL con SQLite local por computadora. La integración concreta de SQLite (better-sqlite3 o integración de Bun) sigue pendiente. MongoDB requiere aprobación adicional.
+- **IA y validación:** Vercel AI SDK (ai) y Zod para validar datos y esquemas de herramientas. OpenAI es el proveedor aprobado para el flujo v1; los modelos y detalles concretos de integración siguen pendientes.
+- **Interfaz y estado remoto:** Tailwind CSS y TanStack Query con fetch nativo. Zustand se usará solo si React Context no resulta suficiente.
+- **Autenticación:** v1 no tendrá cuentas ni inicio de sesión. Si se aprueba un despliegue futuro en la nube, se usará el gateway SSO compartido.
 
-La aprobación del stack y de la estructura de carpetas no determina versiones de dependencias, modo de renderizado, arquitectura integrada ni todas las decisiones de producto.
+La aprobación del stack y el alcance no determina versiones de dependencias, modo de renderizado, integración de los POCs, estructura de workspaces, arquitectura completa ni detalles de implementación.
 
-## Decisiones pendientes
+## Decisiones técnicas pendientes
 
-- Sistemas operativos y plataformas compatibles.
-- Método de captura del audio, permisos y controles de grabación.
-- Motor, modelo o proveedor de transcripción, procesamiento externo y costos.
-- Elección entre SQLite y PostgreSQL; MongoDB requiere aprobación adicional.
-- Consentimiento, privacidad, seguridad, almacenamiento, retención y eliminación del audio y las notas.
-- Modo de renderizado de la aplicación (SSR, SPA o SSG), integración de los POCs, workspaces de producto, CI y despliegue.
+- Permisos y detalles de captura nativa, y recuperación ante interrupciones en cada plataforma.
+- Modelos y configuración de OpenAI.
+- Integración de SQLite, ruta y protección local de los archivos de audio fallidos.
+- Reintentos, idempotencia, timeouts y recuperación ante cierre inesperado.
+- Host y puerto local e integración de la API con la aplicación de escritorio.
+- Detalles de la lista de capturas fallidas, paginación y eliminación individual de pendientes.
+- Versiones de dependencias, modo de renderizado (SSR, SPA o SSG), CI y publicación.
 
-No implementes captura, transmisión, transcripción ni persistencia de audio, ni envíes audio o notas a servicios externos, hasta que se aprueben explícitamente el alcance y el tratamiento de esos datos.
+El alcance completo de v1 y las decisiones de negocio no deben volver a marcarse como pendientes. Cualquier ampliación o cambio de ese alcance requiere aprobación.
 
 ## Desarrollo y validación
 
