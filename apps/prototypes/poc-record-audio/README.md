@@ -23,7 +23,7 @@ El mínimo de Windows 10 1809 es técnico. Las ediciones de Windows 10 1809 que 
 
 ## Compilar y ejecutar
 
-Desde `poc-record-audio/`, instala las dependencias de Bun una vez con `bun install`.
+Desde `apps/prototypes/poc-record-audio/`, instala las dependencias de Bun una vez con `bun install`.
 
 Prepara el capturador del equipo:
 

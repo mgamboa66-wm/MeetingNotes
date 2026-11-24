@@ -6,11 +6,16 @@ MeetingNotes será una herramienta para tomar notas de conversaciones de reunion
 
 ## Mapa del repositorio
 
-- `AGENTS.md`: contexto, límites y decisiones que requieren revisión humana.
-- `README.md`: propósito, stack aprobado y decisiones pendientes.
-- No hay todavía código fuente, aplicaciones, paquetes, manifiestos de dependencias ni configuración de pruebas.
+- `apps/web/`: espacio reservado para la interfaz del producto; aún no contiene una aplicación integrada.
+- `apps/api/`: espacio reservado para la API del producto; aún no contiene una API integrada.
+- `apps/prototypes/`: dos POCs con código y configuración independientes, además de una carpeta que solo conserva caché de Vite. Ninguno forma una arquitectura de producto aprobada.
+- `packages/contracts/`: espacio reservado para contratos compartidos; aún no contiene código.
+- `tests/`: espacio reservado para pruebas; todavía no hay suite configurada.
+- `docs/API_CONTRACT.md` y `docs/FRONTEND_API_GUIDE.md`: propuestas de contrato y trabajo de frontend, sujetas a revisión.
+- `docs/MEETINGNOTES_V1_CONTEXT_TEMP.md`: contexto temporal; no es un plan aprobado.
+- `docs/decisions/` y `docs/plans/`: estructura reservada para decisiones y planes revisados; no hay decisiones ni planes aprobados aquí.
+- `README.md`: resumen del proyecto, estructura y decisiones pendientes.
 
-La persona usuaria aprobó el stack técnico base descrito en la sección siguiente, de acuerdo con el estándar de WM AI Builders. La imagen que lo describe no aprueba una estructura de directorios: no asumas que deban existir `apps/`, `packages/` o `docs/`.
 
 ## Stack técnico aprobado
 
@@ -21,22 +26,22 @@ La persona usuaria aprobó el stack técnico base descrito en la sección siguie
 - **Interfaz y estado remoto:** Tailwind CSS y TanStack Query con `fetch` nativo. Usa Zustand solo si React Context no resulta suficiente.
 - **Autenticación en la nube:** si la aplicación se despliega en la nube, usa el gateway SSO compartido. El despliegue y los detalles de integración están pendientes.
 
-El stack aprobado no determina versiones de dependencias, estructura del repositorio, modo de renderizado, proveedor de IA ni todas las decisiones de arquitectura. No agregues tecnologías o dependencias fuera de lo indicado ni elijas opciones pendientes por inferencia; solicita aprobación cuando corresponda.
+El stack aprobado no determina versiones de dependencias, estructura de workspaces, modo de renderizado, proveedor de IA ni todas las decisiones de arquitectura. No agregues tecnologías o dependencias fuera de lo indicado ni elijas opciones pendientes por inferencia; solicita aprobación cuando corresponda.
 
 ## Desarrollo y validación
 
-El stack base está aprobado, pero aún no hay código, manifiestos de dependencias ni configuración de pruebas. No inventes ni ejecutes comandos de `npm`, `bun` u otras herramientas. Cuando existan manifiestos y configuración, verifica los comandos reales y documéntalos aquí.
+Los POCs de `apps/prototypes/` tienen manifiestos y lockfiles independientes. No hay un manifiesto raíz, workspace de producto ni configuración de pruebas consolidada. No inventes comandos de desarrollo o validación para la raíz. Consulta el README del POC correspondiente para sus instrucciones; no ejecutes comandos de `npm`, `bun` u otras herramientas sin que la persona usuaria lo solicite.
 
 ## Convenciones
 
 - Aplica los principios SOLID al diseñar el código, según corresponda al contexto del proyecto.
 - El equipo usa Codex; sigue este archivo y cualquier instrucción vigente más específica que aparezca en el repositorio.
 - Mantén las instrucciones factuales; marca lo no decidido como pendiente en vez de inferirlo.
-- No agregues estructura de workspaces ni convenciones de código no definidas por el stack aprobado sin autorización.
+- Mantén separados los POCs hasta que un plan aprobado defina si alguno se convierte en base del producto.
 
 ## Plan aprobado
 
-No hay un plan de implementación aprobado dentro del repositorio. La persona usuaria aprobó explícitamente el stack descrito arriba; esa aprobación no define por sí sola el alcance del producto ni las demás decisiones de arquitectura. Antes de decidir esos aspectos, pide la ubicación del plan aprobado o su aprobación explícita.
+No hay un plan de implementación aprobado dentro del repositorio. La persona usuaria aprobó explícitamente el stack descrito arriba y la organización de carpetas solicitada; esas aprobaciones no definen por sí solas el alcance del producto ni las demás decisiones de arquitectura. Antes de decidir esos aspectos, pide la ubicación del plan aprobado o su aprobación explícita.
 
 ## Decisiones que requieren revisión humana
 
@@ -45,7 +50,7 @@ No hay un plan de implementación aprobado dentro del repositorio. La persona us
 - Motor, modelo o servicio de transcripción, uso de servicios externos y costos.
 - Elección de base de datos entre SQLite y PostgreSQL; MongoDB requiere aprobación adicional.
 - Privacidad de reuniones, consentimiento, seguridad, almacenamiento, procesamiento, retención y eliminación de audio y notas.
-- Modo de renderizado, versiones de dependencias, arquitectura no especificada, estructura del repositorio, CI, publicación, despliegue e integración del gateway SSO.
+- Modo de renderizado, versiones de dependencias, integración de los POCs, workspaces de producto, arquitectura no especificada, CI, publicación, despliegue e integración del gateway SSO.
 - Creación del remoto de GitHub, visibilidad del repositorio y publicación de contenido.
 
 No envíes audio o notas a servicios externos, ni habilites grabación o retención, sin aprobación explícita del alcance y del tratamiento de datos. No crees el remoto ni publiques cambios: el usuario indicó que creará el repositorio en su cuenta personal.
