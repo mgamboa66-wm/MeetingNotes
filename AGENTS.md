@@ -29,6 +29,7 @@ El stack base está aprobado, pero aún no hay código, manifiestos de dependenc
 
 ## Convenciones
 
+- Aplica los principios SOLID al diseñar el código, según corresponda al contexto del proyecto.
 - El equipo usa Codex; sigue este archivo y cualquier instrucción vigente más específica que aparezca en el repositorio.
 - Mantén las instrucciones factuales; marca lo no decidido como pendiente en vez de inferirlo.
 - No agregues estructura de workspaces ni convenciones de código no definidas por el stack aprobado sin autorización.
