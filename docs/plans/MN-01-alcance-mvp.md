@@ -1,10 +1,10 @@
 # MN-01 | Definir alcance del MVP y decisiones de producto pendientes
 
-**Estado de ejecución:** Ejecutado, según confirmación de la persona usuaria.  
-**Fecha de registro:** 2026-11-24.  
-**Evidencia de aprobación:** las fuentes del repositorio consultadas se detallan abajo; no se adjuntó acta o registro que identifique a Ronald, Producto y Privacidad como aprobadores.
+**Estado de ejecución:** Ejecutado, según confirmación de la persona usuaria. La priorización y los responsables de las decisiones pendientes se registraron el 2026-11-25.
+**Fecha de registro inicial:** 2026-11-24.
+**Evidencia de aprobación:** `AGENTS.md`, `README.md` y el scope de v1 identifican el alcance de producto como aprobado. No se encontró un registro nominal de la aprobación de Ronald sobre la priorización del MVP.
 
-> El estado “Ejecutado” registra la confirmación de la persona usuaria sobre MN-01. No constituye por sí mismo aprobación de captura, procesamiento externo o retención de audio.
+> El estado “Ejecutado” registra la confirmación de la persona usuaria sobre MN-01. La autoridad para capturar, procesar y tratar audio proviene del scope aprobado y se limita a lo descrito allí.
 
 ## Objetivo
 
@@ -21,40 +21,51 @@ La persona usuaria confirma que estas actividades se ejecutaron. Los resultados 
 
 ## Fuentes consultadas y estado
 
-- [Scope de v1](../MEETINGNOTES_V1_SCOPE.md): se declara “alcance de producto aprobado” y documenta aplicación local, macOS y Windows, captura del sistema y micrófono, OpenAI, idioma por reunión, historial y reglas de tratamiento de audio.
-- [AGENTS.md](../../AGENTS.md): conserva como pendientes la plataforma, el alcance, el método de captura, el procesamiento, el almacenamiento y el tratamiento de datos; prohíbe habilitar captura, transmisión o retención sin aprobación explícita del alcance y tratamiento.
-- [README principal](../../README.md): refleja que varias decisiones de producto y tratamiento siguen pendientes.
+- [Scope de v1](../MEETINGNOTES_V1_SCOPE.md): declara aprobado el alcance de producto y documenta la aplicación local, macOS y Windows, captura del sistema y micrófono, procesamiento con OpenAI, idioma por reunión, historial y tratamiento del audio.
+- [AGENTS.md](../../AGENTS.md): confirma el alcance y el stack aprobados, establece sus límites y enumera las decisiones técnicas que siguen abiertas.
+- [README principal](../../README.md): confirma el alcance aprobado de v1 y distingue las decisiones técnicas pendientes.
 - [README de `teams-notes`](<../additional resources/README.md>): referencia exploratoria de otro proyecto. Describe Whisper local, Claude y notas Markdown con resumen ejecutivo, puntos clave, decisiones, action items y seguimiento; no es una decisión aprobada de MeetingNotes.
 - [MN-03](./MN-03-arquitectura-informacion.md): borrador para revisión; no aprueba estructura de notas, almacenamiento ni exportación.
 - [MN-04](./MN-04-wireframes.md): aprobado únicamente para preparar wireframes estáticos con datos ficticios; no habilita captura o procesamiento.
 
-**Discrepancia de autoridad:** `docs/MEETINGNOTES_V1_SCOPE.md` declara aprobado el alcance de v1, mientras `AGENTS.md` y `README.md` todavía marcan decisiones de alcance y tratamiento como pendientes. El scope identifica una aprobación de forma general, pero no nombra a Ronald, Producto y Privacidad ni enlaza su registro de aprobación. Este archivo conserva ambas referencias sin atribuir una aprobación individual no documentada.
+**Autoridad vigente:** la discrepancia registrada originalmente entre el scope, `AGENTS.md` y `README.md` quedó resuelta. Las tres fuentes actuales declaran aprobado el alcance de producto de v1 y mantienen abiertas únicamente decisiones técnicas no definidas. La aprobación explícita de Ronald sobre la priorización sigue sin estar documentada; no se infiere a partir de la aprobación general del scope.
 
 ## Criterios de aceptación y registro disponible
 
 | Criterio | Registro en el repositorio |
 |---|---|
-| Ronald aprueba una definición del MVP y una lista priorizada de funcionalidades imprescindibles. | El scope de v1 documenta funcionalidades, pero no nombra a Ronald ni incluye una lista priorizada o evidencia atribuible de su aprobación. MN-01 se marca ejecutado por confirmación de la persona usuaria; el comprobante de esta aprobación no está adjunto. |
-| Se documentan la plataforma compatible y el flujo previsto de reunión a notas. | El scope describe aplicación local para macOS y Windows y el recorrido de audio a transcripción, resumen y pendientes. `AGENTS.md` y `README.md` aún dejan plataforma y tratamiento pendientes; la discrepancia debe resolverse en la documentación rectora. |
-| Cada decisión pendiente tiene una persona responsable y permanece marcada como pendiente hasta su aprobación. | Las instrucciones enumeran decisiones que requieren revisión, pero no asignan responsables por decisión. No se inventan responsables en este registro; no se encontró una matriz de responsables y aprobaciones. |
-| No se considera aprobado capturar audio, procesarlo externamente ni conservarlo antes de la aprobación de Producto y Privacidad. | `AGENTS.md` mantiene esa restricción. El scope de v1 describe captura, OpenAI y tratamiento de audio, pero no enlaza evidencia separada de aprobación de Producto y Privacidad. Este registro no declara superada esa condición. |
+| Ronald aprueba una definición del MVP y una lista priorizada de funcionalidades imprescindibles. | El alcance está aprobado y la priorización P0/P1 con complejidad relativa se incorporó al [scope de v1](../MEETINGNOTES_V1_SCOPE.md). No hay evidencia de aprobación nominal de Ronald sobre esa priorización; este punto sigue pendiente si se exige su aprobación explícita. |
+| Se documentan la plataforma compatible y el flujo previsto de reunión a notas. | Satisfecho: el scope documenta macOS y Windows, captura, procesamiento, resultados, historial y tratamiento de datos; `AGENTS.md` y `README.md` están alineados con ese alcance. |
+| Cada decisión pendiente tiene una persona responsable y permanece marcada como pendiente hasta su aprobación. | Satisfecho en cuanto a asignación: los responsables están registrados en la tabla siguiente. La asignación no decide ni aprueba las opciones técnicas; cada tema continúa pendiente hasta que su definición se documente. |
+| El tratamiento de audio y resultados se limita al flujo aprobado. | Satisfecho: captura, procesamiento con OpenAI y retención local de audio fallido se permiten únicamente según el scope. Cualquier tratamiento distinto requiere aprobación humana. |
 
-## Decisiones que siguen requiriendo un registro explícito
+## Responsables y decisiones pendientes
 
-| Decisión | Estado documental | Responsable |
+| Decisión pendiente | Responsable asignado | Estado |
 |---|---|---|
-| Autoridad vigente del alcance de v1 frente a `AGENTS.md` y `README.md` | Discrepancia abierta | No documentado |
-| Aprobación de Producto y Privacidad para captura, procesamiento externo y tratamiento/retención de audio | No hay evidencia atribuible adjunta a este registro | No documentado |
-| Responsable por cada decisión pendiente identificada en `AGENTS.md` | No asignado en las fuentes consultadas | No documentado |
-| Exportación a Markdown: inclusión en MVP y comportamiento | No definida por el scope aprobado ni por este registro | No documentado |
+| Aprobación explícita de Ronald sobre la priorización del MVP | Ronald | Pendiente de registro |
+| Permisos y detalles de captura nativa para macOS y Windows | Marco | Pendiente de definición |
+| Recuperación ante interrupciones y comportamiento por plataforma | Marco | Pendiente de definición |
+| Modelos concretos de OpenAI y su configuración | Marco | Pendiente de definición |
+| Integración de SQLite, ruta y protección local de archivos de audio fallidos | Marco | Pendiente de definición |
+| Reintentos, idempotencia, timeouts y recuperación tras cierre inesperado | Marco | Pendiente de definición |
+| Host y puerto local; integración para iniciar la API junto con la app de escritorio | Marco | Pendiente de definición |
+| Versiones de dependencias de backend | Marco | Pendiente de definición |
+| Versiones de dependencias de frontend y escritorio | Ericka y Cristina (responsabilidad compartida) | Pendiente de definición |
+| Modo de renderizado del frontend | Marco | Pendiente de decisión |
+| Estructura de workspaces del producto | Ronald | Pendiente de definición |
+| Integración continua (CI) | Marco | Pendiente de definición |
+| Proceso de publicación del producto | Marco | Pendiente de definición |
+| Inclusión y alcance de la exportación a Markdown | Ronald | No está definida ni aprobada para v1; requiere una decisión explícita antes de incluirla |
 
-El scope aprobado incluye almacenamiento local con SQLite, pero `AGENTS.md` mantiene la elección de base de datos y el tratamiento de datos bajo revisión. MN-01 registra esa diferencia; no añade un esquema ni amplía la aprobación de almacenamiento.
+La priorización y las estimaciones cualitativas de complejidad están en la sección 2 del scope. P1 también debe completarse antes de dar v1 por terminada. La exportación a Markdown no aparece definida en el alcance aprobado; no se debe inferir su inclusión ni su comportamiento.
 
 ## Riesgos y límites
 
-- Un documento que se titula “scope aprobado” puede interpretarse como autorización para tratar audio, aunque `AGENTS.md` exige aprobación explícita del tratamiento. Mantener visible la discrepancia y no habilitar captura, envío externo o retención sobre la base de este archivo.
+- El scope autoriza solo el tratamiento descrito en su sección 3. Cualquier cambio de destino, retención o tratamiento necesita aprobación humana.
 - El README de `Additional resources` describe otro producto y otras tecnologías. Sus propuestas no se incorporan al MVP sin decisión explícita.
-- El registro no identifica a las personas responsables ni aporta acta de aprobación; no se debe inferir esa información.
+- La asignación de responsables no equivale a una decisión técnica aprobada. Mantener cada definición como pendiente hasta documentarla.
+- No se debe atribuir a Ronald una aprobación de la priorización mientras no exista un registro explícito.
 
 ## Validación y reversión
 
