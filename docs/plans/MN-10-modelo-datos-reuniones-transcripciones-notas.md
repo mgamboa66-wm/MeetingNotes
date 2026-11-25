@@ -1,197 +1,127 @@
-# MN-10 | Definir el modelo de datos de reuniones, transcripciones y notas
+# MN-10 | Revisar el modelo de datos de reuniones, transcripciones y notas
 
-**Estado:** Borrador para revisión humana; no aprobado.  
-**Objetivo:** proponer el contrato de datos de v1 para reuniones, segmentos de transcripción y notas estructuradas, además de comparar las consecuencias de SQLite y PostgreSQL dentro de la base Drizzle + SQL.  
-**Resultado esperado:** esquema conceptual y contrato de API propuestos, con acceso, ciclo de vida, eliminación, migraciones y decisiones pendientes claramente separados de las reglas aprobadas.
+**Estado:** Borrador para revisión humana; no aprobado. Este documento revisa el modelo ya implementado y no modifica código, el contrato vigente ni las decisiones aprobadas de v1.
 
-> Este borrador es documental. No implementa esquemas ni API, no modifica la política aprobada de datos y no autoriza persistir transcripciones, adoptar PostgreSQL ni ampliar el alcance de v1.
+**Objetivo:** describir cómo el esquema y la API del backend MN-08 representan los datos aprobados de reuniones; distinguir datos persistentes, datos transitorios y elementos que no forman parte de v1; registrar los pendientes técnicos que sí siguen abiertos.
 
-## Condición de inicio y autoridad
+**Resultado esperado:** una revisión documental del esquema, la API y el ciclo de vida de los datos, alineada con el alcance v1 y con la implementación actual. El plan no autoriza persistir transcripciones, añadir categorías de notas, adoptar PostgreSQL ni ampliar el alcance.
 
-La condición del ticket se considera satisfecha para preparar esta propuesta documental: el alcance aprobado incluye el método de audio y transcripción y especifica el tratamiento local de resultados. Esto no afirma que se hayan realizado revisiones adicionales ni autoriza cambios respecto de ese alcance.
+## Estado de autoridad e implementación
 
-| Requisito previo | Evidencia actual | Estado para MN-10 |
+El alcance de producto v1 está aprobado y MN-01 registra que la discrepancia inicial de autoridad quedó resuelta. MN-05 está aprobado como plan documental por Marco; las aprobaciones de Producto y Privacidad constan en la sección 8 de las decisiones técnicas. La revisión de Ronald sobre el tratamiento ante objeción o retiro del consentimiento sigue pendiente. MN-08 está aprobado para implementar el backend local y su código ya está en `apps/api/`; la validación nativa de captura por plataforma aún no está completa. ([MN-01](./MN-01-alcance-mvp.md:31), [MN-05](./MN-05-privacidad-seguridad-ciclo-vida-datos.md:3), [decisiones técnicas](../decisions/TECH_DESITIONS_MVP.md:139), [MN-08](./MN-08-arquitectura-backend-integraciones.md:133), [README de la API](../../apps/api/README.md:27))
+
+| Tema | Decisión o estado vigente | Estado para esta revisión |
 |---|---|---|
-| Alcance de producto aprobado | El scope se identifica como aprobado el 24 de noviembre de 2026 ([scope, líneas 1–4](../MEETINGNOTES_V1_SCOPE.md)). | Satisfecho. |
-| Método de audio y transcripción aprobado | El scope define captura combinada y envío a OpenAI para transcribir y preparar notas ([scope, líneas 10–16 y 32–36](../MEETINGNOTES_V1_SCOPE.md)). | Satisfecho como regla de producto; modelos e integración concreta siguen pendientes ([AGENTS.md, líneas 26–27 y 50–51](../../AGENTS.md)). |
-| Requisitos de retención aprobados | El scope especifica qué ocurre con audio y transcripción tras éxito o fallo, y excluye retención del historial de reuniones ([scope, líneas 23–30 y 45–51](../MEETINGNOTES_V1_SCOPE.md)). | Satisfecho para las reglas descritas; no se propondrá otra retención. |
-
-MN-05, MN-08 y MN-09 todavía aparecen como borradores no aprobados. MN-05 solicita registrar revisiones y aprobaciones adicionales, y el repositorio no acredita que se hayan realizado ([MN-05, líneas 3, 63–67](./MN-05-privacidad-seguridad-ciclo-vida-datos.md)). Esto se registra como una brecha de evidencia de esas revisiones, no como una revocación del estado vigente del scope ni como aprobación implícita de cambios al tratamiento.
+| Alcance de producto | Aprobado; la fuente vigente es el [alcance v1](../decisions/MEETINGNOTES_V1_SCOPE.md). | Base del modelo; no se reabre. |
+| Datos de reuniones y tareas | El alcance aprueba historial local, título, idioma, resumen, pendientes, edición y eliminación manual. | Implementados en el esquema y el contrato del backend. |
+| Audio y transcripciones | Se elimina audio y transcripción local tras éxito; ante fallo se descarta la transcripción y se conserva el audio hasta reintento o eliminación manual. | Se mantienen esas reglas; no se propone una entidad persistente de transcripción. |
+| SQLite y migraciones | SQLite local, `bun:sqlite`, Drizzle con `drizzle-orm/bun-sqlite`, rutas por sistema operativo y migraciones SQL versionadas se adoptaron para MN-08. | Implementados; la aplicación de la migración en una base de usuario y la validación multiplataforma no se han completado. |
+| Revisión de privacidad | Producto y Privacidad están aprobados según el registro técnico. Ronald sigue pendiente para objeción o retiro del consentimiento. | Registrar el pendiente sin presentarlo como bloqueo general de autoridad del modelo/API. |
 
 ## Fuentes y autoridad
 
-- [AGENTS.md](../../AGENTS.md): instrucciones vigentes. Declara aprobado el comportamiento de v1, limita cualquier ampliación y aprueba Drizzle + SQL con SQLite local por computadora; la integración concreta de SQLite permanece abierta ([líneas 5–7, 22–31 y 48–58](../../AGENTS.md)).
-- [Scope de v1](../MEETINGNOTES_V1_SCOPE.md): alcance de producto aprobado. Es la fuente normativa para los datos que se guardan y el ciclo de vida descrito en este plan.
-- [Contrato de API](../api/API_CONTRACT.md): propuesta técnica, no implementada ni aprobada como contrato final. Propone `Meeting`, `ActionItem`, un registro local de `Capture` y rutas para consulta, edición y eliminación ([secciones 1–4](../api/API_CONTRACT.md)).
-- [Guía frontend](../FRONTEND_API_GUIDE.md): guía basada en la propuesta de API; sus tipos y rutas siguen sujetos a coordinación con backend.
-- [README](../../README.md): confirma que no hay aplicación integrada, manifiesto raíz ni suite de pruebas de producto ([líneas 5–9, 23–46 y 71–73](../../README.md)).
-- [MN-05](./MN-05-privacidad-seguridad-ciclo-vida-datos.md), [MN-08](./MN-08-arquitectura-backend-integraciones.md) y [MN-09](./MN-09-evaluacion-captura-audio-transcripcion.md): borradores, útiles para localizar preguntas y discrepancias, pero no decisiones aprobadas. Por ejemplo, MN-08 aún describe SQLite y el proveedor como pendientes ([líneas 27–42](./MN-08-arquitectura-backend-integraciones.md)) y propone comparar SQLite con PostgreSQL sin seleccionar ([línea 75](./MN-08-arquitectura-backend-integraciones.md)); esa descripción no reemplaza el estado vigente de `AGENTS.md`.
-- MN-05 indica que no se encontró una plantilla aprobada para planes ([MN-05, línea 18](./MN-05-privacidad-seguridad-ciclo-vida-datos.md)). Se sigue el destino y formato de los planes existentes sin declararlos plantilla normativa.
+- [AGENTS.md](../../AGENTS.md): confirma el alcance aprobado, el backend MN-08 y el stack SQLite/Drizzle; también enumera permisos de archivos y algunos fallos de filesystem como decisiones abiertas.
+- [Alcance v1](../decisions/MEETINGNOTES_V1_SCOPE.md): fuente normativa para los datos que se guardan, el acceso local y la retención de audio y transcripciones.
+- [MN-01](./MN-01-alcance-mvp.md): registra resuelta la discrepancia inicial de autoridad.
+- [MN-05](./MN-05-privacidad-seguridad-ciclo-vida-datos.md) y [decisiones técnicas, sección 8](../decisions/TECH_DESITIONS_MVP.md:139): aprobación documental de MN-05, aprobaciones de Producto y Privacidad y revisión de Ronald aún pendiente.
+- [MN-08](./MN-08-arquitectura-backend-integraciones.md): plan aprobado de implementación del backend; distingue código implementado de validación pendiente.
+- [Contrato de API](../api/API_CONTRACT.md): contrato técnico del backend v1, aplicado por MN-08. Sus recursos, rutas y respuestas sirven de referencia para esta revisión.
+- [README de la API](../../apps/api/README.md): estado actual de configuración, persistencia, tratamiento de audio y validación por plataforma.
+- La [guía frontend](../api/FRONTEND_API_GUIDE.md) se basa en el contrato actual. `apps/web/`, `packages/contracts/` y `tests/` siguen reservados; eso no significa que el backend `apps/api/` esté vacío. ([AGENTS.md](../../AGENTS.md:11))
 
 ## Hechos comprobados
 
-- Cada instalación tendrá historial local en SQLite, sin cuentas ni sincronización; el acceso depende de la cuenta del sistema operativo ([scope, líneas 12 y 17–19](../MEETINGNOTES_V1_SCOPE.md)).
-- El scope permite guardar título, idioma elegido, resumen y pendientes. Se pueden editar título, resumen y pendientes, y eliminar una reunión junto con sus pendientes. El historial no vence automáticamente ([scope, líneas 16–21 y 45–51](../MEETINGNOTES_V1_SCOPE.md)).
-- Las tareas deben representar compromisos explícitos. Responsables y fechas solo se incluyen si se mencionan; no se deben inventar compromisos ni asignaciones ([scope, línea 21](../MEETINGNOTES_V1_SCOPE.md)).
-- Al terminar correctamente, se guardan los resultados y se eliminan las copias locales de audio y transcripción. Si falla el procesamiento, se descarta la transcripción y el audio permanece local hasta reintento o eliminación manual, sin vencimiento automático ([scope, líneas 23–30](../MEETINGNOTES_V1_SCOPE.md)).
-- No se conserva la transcripción en el historial y no se contempla guardar transcripciones como resultado persistente ([scope, líneas 30 y 49](../MEETINGNOTES_V1_SCOPE.md)).
-- El stack aprobado es Drizzle + SQL con SQLite local; la integración concreta de SQLite está pendiente. OpenAI está aprobado como proveedor, pero los modelos y la integración concreta siguen pendientes ([AGENTS.md, líneas 26–27 y 50–52](../../AGENTS.md)).
-- El contrato actual propone una entidad persistente `Meeting` con resumen y `ActionItem[]`, sin entidad `Transcript`; sus rutas, campos opcionales y semántica siguen siendo propuestas ([API_CONTRACT.md, líneas 20–57 y 144–230](../api/API_CONTRACT.md)).
-- `apps/api/`, `packages/contracts/` y `tests/` son espacios reservados, sin implementación integrada. Los POCs tienen configuraciones independientes y no son la arquitectura aprobada ([AGENTS.md, líneas 11–15](../../AGENTS.md); [README, líneas 23–46](../../README.md)).
+- Cada instalación mantiene un historial local en SQLite, sin cuentas de MeetingNotes ni sincronización. El acceso depende de la cuenta del sistema operativo. ([alcance v1](../decisions/MEETINGNOTES_V1_SCOPE.md:12))
+- El historial aprobado contiene título, idioma elegido, resumen y pendientes. Se pueden editar título, resumen y pendientes; eliminar una reunión elimina todos sus pendientes. El historial no vence automáticamente. ([alcance v1](../decisions/MEETINGNOTES_V1_SCOPE.md:16))
+- Los pendientes representan acciones explícitas. No se inventan responsables ni fechas; las fechas se conservan como se expresaron. ([alcance v1](../decisions/MEETINGNOTES_V1_SCOPE.md:21))
+- El esquema SQL implementado define `captures`, `meetings`, `action_items` y `processing_staging`. `meetings.captureId` es único; no existe tabla `Transcript`. ([schema.ts](../../apps/api/src/db/schema.ts:7))
+- `Meeting` guarda id, `captureId`, título, idioma, resumen y marcas de creación/actualización. `ActionItem` guarda tarea, responsable opcional y fecha textual opcional. `meetingDate` no forma parte del esquema ni del contrato vigente. ([schema.ts](../../apps/api/src/db/schema.ts:24), [contrato API](../api/API_CONTRACT.md:20))
+- El backend mantiene la transcripción en memoria durante el procesamiento y no la persiste ni la expone. Puede guardar temporalmente en `processing_staging` el resumen y los pendientes generados para recuperación; ese resultado es interno y no incluye transcripción. ([service.ts](../../apps/api/src/service.ts:320), [repository.ts](../../apps/api/src/db/repository.ts:149), [decisiones técnicas, sección 9](../decisions/TECH_DESITIONS_MVP.md:166))
+- Para archivos WAV mayores al límite por solicitud, el backend divide el audio en segmentos, transcribe cada segmento y concatena el texto. Esto no crea segmentos de transcripción con marcas de tiempo, una entidad de datos ni un recurso de API. ([wav.ts](../../apps/api/src/captures/wav.ts:41), [cliente OpenAI](../../apps/api/src/openai/openai-client.ts:19))
+- Tras éxito se elimina el WAV y se publica la reunión; ante fallo del procesamiento se descarta el staging y se conserva el audio local para reintento o eliminación manual, sin vencimiento automático. ([service.ts](../../apps/api/src/service.ts:320), [README de la API](../../apps/api/README.md:23))
+- El backend ya contiene configuración Drizzle/SQLite, migración SQL versionada y aplicación automática de migraciones al iniciar. Si una migración falla, la API no inicia. ([README de la API](../../apps/api/README.md:17), [migración](../../apps/api/drizzle/0000_initial_meetingnotes_schema.sql))
+- El helper de macOS no se compiló ni ejecutó en el entorno documentado por incompatibilidad entre toolchain y SDK; la captura Windows requiere validación real en un equipo Windows. La ejecución de una migración en una base de usuario tampoco está registrada. ([README de la API](../../apps/api/README.md:27), [MN-08](./MN-08-arquitectura-backend-integraciones.md:137))
 
-## Supuestos de trabajo
+## Datos persistentes y transitorios en v1
 
-- Los segmentos con marcas de tiempo se analizarán como una estructura transitoria del procesamiento, sin tabla, endpoint de lectura ni conservación en el historial. Motivo: el ticket pide modelar segmentos, mientras el scope excluye la retención de transcripciones. Si se requiere almacenamiento o consulta posterior, cambiaría el tratamiento aprobado y debe solicitarse aprobación antes de incorporarlo.
-- “Puntos clave”, “decisiones” y “seguimiento” son campos candidatos solicitados por MN-10, no requisitos ya aprobados de v1. El scope aprobado solo exige resumen y pendientes. Si se quieren persistir o mostrar estas categorías, se debe aprobar la ampliación del alcance.
-- El contrato de API final puede conservar la forma de recursos existente o cambiarla tras revisión; la existencia de `API_CONTRACT.md` no la convierte en un contrato de implementación.
+| Recurso | Estado en la implementación | Contenido y límite aprobado |
+|---|---|---|
+| `Capture` | Persistente local | Estado, identificador, marcas de tiempo, idioma/título de solicitud, código de fallo y referencia privada al audio fallido. La ruta del archivo no se expone por API. |
+| `Meeting` | Persistente local | Título, idioma elegido, resumen y marcas de tiempo; una reunión como máximo por `captureId`. No incluye transcripción ni `meetingDate`. |
+| `ActionItem` | Persistente local | Tarea, responsable opcional y fecha textual opcional; se elimina junto con la reunión. |
+| `processing_staging` | Temporal, interno | Resumen y pendientes estructurados mientras se confirma el borrado del audio y se finaliza la transacción. No incluye transcripción, prompt ni respuesta cruda de OpenAI. |
+| Transcripción | Transitoria en memoria | Se usa para generar notas; no se guarda en SQLite, no se expone por API y se descarta al terminar o fallar. |
+| WAV | Archivo local | Se borra al completar con éxito; si falla el procesamiento, permanece hasta reintento exitoso o eliminación manual. |
+| Segmentos de audio para transcribir | Transitorios | Se crean cuando el tamaño del WAV requiere dividir la solicitud. No son segmentos temporizados de transcripción ni datos del historial. |
 
-## Preguntas abiertas
+## Decisiones aprobadas que este borrador no reabre
 
-### Antes de cerrar el contrato propuesto
+- **SQLite:** es el destino local aprobado para cada computadora. MN-08 adopta `bun:sqlite`, `drizzle-orm/bun-sqlite`, rutas de datos por sistema operativo y migraciones SQL versionadas aplicadas antes de aceptar solicitudes. No se compara como si el motor siguiera sin decidirse. ([AGENTS.md](../../AGENTS.md:27), [decisiones técnicas, sección 3](../decisions/TECH_DESITIONS_MVP.md:42))
+- **PostgreSQL:** no es una opción de selección para v1. No se despliega PostgreSQL ni se cambia el destino local aprobado mediante MN-10; una revisión futura requeriría alcance y plan técnico separados.
+- **Transcripciones:** no se guardan ni se exponen en v1. No se propone tabla, endpoint, caché durable ni copia en logs.
+- **`meetingDate`:** está excluido del contrato de v1. ([decisiones técnicas, sección 7](../decisions/TECH_DESITIONS_MVP.md:131))
+- **`keyPoints`, `decisions` y `followUp`:** no son categorías aprobadas de v1; el modelo actual se limita a resumen y pendientes. Añadirlas requeriría aprobación de una ampliación del alcance.
+- **Capturas y procesamiento:** `POST /api/meetings` inicia el proceso asíncrono con HTTP 202; el estado se consulta por `captureId`, la unicidad local depende de ese id y el resultado temporal de notas permanece oculto a la API. ([decisiones técnicas, sección 9](../decisions/TECH_DESITIONS_MVP.md:161))
 
-1. ¿“Puntos clave”, “decisiones” y “seguimiento” se solicitan como ampliación funcional de v1 o solo como categorías para evaluar? El scope no los incluye; depende de aprobación de producto antes de añadirlos a una respuesta o persistencia.
-2. ¿Los segmentos y sus marcas de tiempo solo deben existir durante el procesamiento? Si se solicita acceso después de procesar o guardado local, se necesita aprobar expresamente ese tratamiento y actualizar el scope.
-3. ¿Qué unidad, precisión y convención de límites deben usar las marcas de tiempo (por ejemplo, inicio y fin relativos a la grabación)? El repositorio no lo define; el tipo del contrato depende de esa decisión.
-4. ¿Se necesitan etiquetas de hablante? No aparecen en el scope ni en la propuesta API y no deben añadirse por inferencia.
-5. ¿Se conserva `meetingDate`, que aparece como campo candidato en la propuesta API pero no es requisito del scope? ¿Qué semántica de edición tendría?
+## Pendientes reales
 
-### Decisiones técnicas pendientes
+### Revisión y validación
 
-6. ¿Cómo se concreta el adaptador de SQLite dentro de Drizzle + SQL y dónde se ubica/protege el archivo local? SQLite es el destino de producto aprobado; su integración y detalles de protección siguen abiertos ([AGENTS.md, línea 26 y 52](../../AGENTS.md)).
-7. ¿Qué consecuencias operativas y de despliegue se aceptan al comparar PostgreSQL con el modelo local por computadora? PostgreSQL no está aprobado para v1; adoptarlo requeriría aprobación y revisión de alcance/topología. No se decidirá aquí.
-8. ¿Qué controles concretos del sistema operativo se requieren para el acceso a base de datos y archivos de audio fallidos? El requisito de acceso por cuenta del sistema operativo está aprobado; permisos y protección concreta no están especificados.
-9. ¿Qué estrategia de migración, compatibilidad y recuperación se requiere para bases ya existentes? No hay migraciones ni un producto integrado en el árbol actual; tampoco hay permiso para asumir respaldos o retención adicionales.
-10. ¿La revisión de privacidad pendiente que MN-05 solicita es un requisito adicional antes de implementar cambios en este contrato? Su estado no está acreditado; la respuesta no cambia el contenido ya aprobado del scope y debe distinguirse de una aprobación de implementación.
+1. **Ronald:** registrar su revisión del tratamiento ante objeción o retiro del consentimiento. No atribuirle aprobación mientras siga pendiente. ([decisiones técnicas, sección 8](../decisions/TECH_DESITIONS_MVP.md:157))
+2. **macOS:** completar compilación y ejecución del helper con permisos de captura en un equipo compatible.
+3. **Windows:** verificar el helper WASAPI en un equipo Windows; una revisión en macOS no acredita su funcionamiento.
+4. **Migración:** verificar su aplicación en una base de usuario o instalación de prueba antes de declarar validada esa ruta operativa.
 
-## Alcance
+### Detalles técnicos aún abiertos
 
-**Incluye:** proponer un esquema conceptual para los datos persistentes aprobados; especificar por separado el contrato transitorio candidato para segmentos; identificar las ampliaciones de notas que requieren aprobación; revisar rutas de lectura, edición y eliminación en la propuesta de API; comparar SQLite con PostgreSQL sin seleccionar un nuevo motor; y documentar acceso, retención, borrado y migraciones como reglas o decisiones pendientes.
+- Permisos concretos y protección de los archivos de base de datos, audio fallido y credenciales por sistema operativo.
+- Tratamiento de fallos de filesystem fuera del caso de borrado del audio después de generar las notas.
+- Comportamiento operativo de logs y copias, sin crear transcripciones, respaldos ni retención adicional.
 
-**Excluye:** implementar tablas, migraciones, validación o endpoints; persistir o exponer transcripciones; aumentar retención; agregar cuentas, nube o sincronización; cambiar la captura o los proveedores; integrar los POCs; o declarar aprobado el contrato de API.
+Estos pendientes no reabren el alcance de producto, el motor SQLite ni el contrato ya aplicado. Los pendientes de revisión y validación tampoco convierten `apps/api/` en una propuesta no implementada.
+
+## Elementos fuera del contrato vigente
+
+- Los segmentos de transcripción con marcas de tiempo, etiquetas de hablante, acceso posterior a la transcripción o persistencia de esta no forman parte del modelo ni de la API de v1. Una propuesta futura requeriría revisar el tratamiento y obtener aprobación antes de implementar o retener esos datos.
+- Las categorías adicionales de notas (`keyPoints`, `decisions`, `followUp`) y `meetingDate` no se deben incorporar por inferencia.
+- No se incorpora PostgreSQL, nube, cuentas, sincronización, cifrado propio ni respaldos automáticos.
+
+## Alcance de esta revisión
+
+**Incluye:** contrastar el esquema y el contrato API implementados con el alcance; describir datos persistentes y transitorios; verificar conceptualmente ciclo de vida, edición y eliminación; identificar pendientes reales; y separar futuras propuestas de v1.
+
+**Excluye:** cambiar el esquema, crear migraciones o endpoints, ejecutar pruebas o migraciones, guardar o mostrar transcripciones, cambiar proveedores, añadir campos no aprobados o seleccionar un motor distinto de SQLite.
 
 ## Criterios de aceptación verificables
 
-1. El borrador distingue cada campo persistente aprobado de los campos propuestos y de los que requieren ampliar el alcance.
-2. El esquema describe metadatos de reunión, la relación con tareas y un contrato candidato de segmentos con marcas de tiempo, dejando explícitos unidad y semántica si aún no se acuerdan.
-3. El contrato API propuesto identifica operaciones de consulta, edición y eliminación; no devuelve ni persiste transcripciones bajo las reglas vigentes del scope.
-4. La comparación SQLite/PostgreSQL expone ajuste al producto local, consecuencias operativas y aprobaciones necesarias sin declarar adoptado un motor nuevo. Reconoce que SQLite ya figura como destino de producto aprobado y que su integración concreta sigue pendiente.
-5. Acceso, retención y eliminación se trazan al scope; cualquier control operativo no definido queda como pregunta y no se introduce una retención nueva.
-6. La estrategia de migración enumera compatibilidad y riesgos de datos sin prometer reversión, copias o recuperación que el repositorio no haya definido.
-7. Las afirmaciones de aprobación se vinculan a fuentes vigentes; los planes no aprobados y los POCs no se presentan como autoridad.
-
-Estos criterios describen el resultado esperado del trabajo MN-10; no se consideran satisfechos por la creación de este plan.
-
-## Estado y patrones actuales
-
-- No hay modelo de datos, API ni migraciones de producto implementadas. Los directorios de producto están reservados ([AGENTS.md, líneas 11–15](../../AGENTS.md)).
-- La propuesta de API ya aporta un punto de partida para `Meeting` y `ActionItem`, además del flujo de capturas fallidas; la guía frontend reproduce esos tipos como propuestas ([API_CONTRACT.md, secciones 2–3](../api/API_CONTRACT.md); [guía frontend, “Payloads y tipos propuestos”](../FRONTEND_API_GUIDE.md)).
-- El contrato actual expresa marcas de tiempo RFC 3339 para creación/actualización y una fecha de reunión opcional, pero no define segmentos temporizados de transcripción ([API_CONTRACT.md, sección 2.1](../api/API_CONTRACT.md)).
-- No se observaron archivos de migración, configuración de Drizzle o esquema SQL del producto en los directorios reservados. Los manifiestos de los POCs no constituyen configuración de producto.
-
-## Impacto por componente
-
-| Componente existente | Responsabilidad / estado | Cambio previsto si se aprueba el contrato |
-|---|---|---|
-| `docs/MEETINGNOTES_V1_SCOPE.md` | Fuente de reglas de producto aprobadas. | Sin cambio por este plan. Solo se actualizaría si se aprueba una ampliación como persistir nuevas categorías de notas o transcripciones. |
-| `docs/api/API_CONTRACT.md` | Propuesta técnica de API. | Candidato a documentar el esquema, el payload y la eliminación tras revisión humana; no editar como consecuencia automática de este borrador. |
-| `docs/FRONTEND_API_GUIDE.md` | Guía de trabajo basada en la API propuesta. | Alinear tipos y operaciones únicamente después de acordar el contrato. |
-| `apps/api/`, `packages/contracts/`, `tests/` | Espacios reservados sin producto integrado. | Posibles ubicaciones futuras, sujetas al plan técnico aprobado; este plan no inventa archivos ni estructura. |
-| POCs en `apps/prototypes/` | Experimentos con manifiestos y lockfiles separados. | Sin integración ni cambios previstos. |
-
-## Contratos y datos propuestos
-
-### Persistencia aprobada como base
-
-La siguiente forma conserva el mínimo expresamente requerido por el scope y reutiliza, como propuesta, los nombres del contrato API actual. No fija tipos SQL, índices, restricciones, claves físicas ni reglas de migración.
-
-| Recurso/campo | Propuesta conceptual | Estado / notas |
-|---|---|---|
-| `Meeting` | `id`, `title`, `outputLanguage`, `summary`, `createdAt`, `updatedAt` | Persistencia de título, idioma, resumen y pendientes se deriva del scope. Las marcas de tiempo y el formato de ID son detalles de contrato por revisar. |
-| `Meeting.actionItems` | Colección de tareas vinculadas a la reunión | El scope exige pendientes editables y borrado junto con la reunión. |
-| `ActionItem` | `id`, `meetingId`, `task`, `assignee`, `dueDateText` | Coincide con la propuesta API; tarea explícita, responsable/fecha opcionales y fecha conservada como se dijo ([API_CONTRACT.md, sección 2.2](../api/API_CONTRACT.md)). |
-| `meetingDate` | Campo opcional candidato | No requerido en el scope; mantener fuera del contrato final hasta resolver la pregunta 5. |
-
-### Categorías de nota solicitadas, pendientes de aprobación
-
-El ticket menciona `keyPoints`, `decisions` y `followUp`. Se pueden representar como colecciones asociadas a la reunión en una alternativa de contrato, pero el tipo, cardinalidad, edición y generación no se fijan en este borrador. No deben persistirse ni añadirse al alcance de v1 hasta resolver la pregunta 1. `summary` y `actionItems` sí corresponden a las reglas aprobadas existentes.
-
-### Segmentos y marcas de tiempo de transcripción
-
-Contrato interno transitorio candidato, pendiente de decidir unidad y límites:
-
-| Elemento | Contenido candidato | Restricción |
-|---|---|---|
-| Segmento | texto reconocido, tiempo inicial y tiempo final relativos al audio | No persistir en el historial ni exponer en la API de reuniones bajo el scope vigente. Unidad, precisión y reglas para segmentos vacíos o superpuestos quedan abiertas. |
-
-No se propone tabla `Transcript`, endpoint de consulta de transcripción, caché durable ni inclusión en registros. El scope dispone que la copia local de transcripción se borre tras éxito y se descarte si falla el procesamiento. Cualquier retención adicional requiere aprobación antes de cambiar el contrato.
-
-### API candidata
-
-Partir de las operaciones ya propuestas en `API_CONTRACT.md`: crear/procesar reunión, listar y consultar reuniones, editar título/resumen y tareas, y eliminar una reunión con sus tareas. Mantener el borrado manual de audio fallido mediante la operación de captura existente. El contrato final debe hacer explícito que borrar una reunión elimina sus tareas y que no hay vencimiento automático. No agregar una operación de transcripción. Las rutas, códigos, paginación, idempotencia y errores siguen sin aprobación ([API_CONTRACT.md, secciones 3–4](../api/API_CONTRACT.md)).
-
-### SQLite y PostgreSQL
-
-| Opción | Evidencia y ajuste al alcance | Consecuencia que debe documentarse | Estado |
-|---|---|---|---|
-| SQLite | El scope y `AGENTS.md` fijan historial local en SQLite por computadora. | Concretar integración de Drizzle, ubicación/protección del archivo, acceso y ciclo de migración. No hay configuración de producto observada. | Destino de producto aprobado; integración técnica abierta. |
-| PostgreSQL | La base autorizada es Drizzle + SQL, pero PostgreSQL no aparece como destino aprobado de v1. El producto excluye nube y sincronización. | Evaluar cómo cambiarían distribución, ejecución del servicio, conexiones, acceso local y migraciones; no asumir que mejora rendimiento sin carga medida. Su adopción alteraría decisiones técnicas y posiblemente el alcance operativo. | Alternativa de comparación; no seleccionada ni aprobada. |
-
-La comparación debe considerar la aplicación local por computadora, operación sin cuentas de MeetingNotes, migración y costo de soporte. Este borrador no elige ni cambia el destino aprobado por el scope.
-
-### Acceso, retención y eliminación
-
-- **Acceso aprobado:** depende de la cuenta del sistema operativo; no habrá login de MeetingNotes ([scope, líneas 17–19](../MEETINGNOTES_V1_SCOPE.md)). Los permisos concretos del archivo de base de datos y los archivos de audio fallidos siguen abiertos.
-- **Retención aprobada:** reuniones no vencen automáticamente; las transcripciones no forman parte del historial; audio fallido se mantiene hasta reintento o eliminación manual ([scope, líneas 27–30 y 45–50](../MEETINGNOTES_V1_SCOPE.md)).
-- **Eliminación aprobada:** eliminar reunión elimina pendientes; al completar procesamiento se borra el audio y la transcripción local; eliminar una captura fallida elimina audio local. La propuesta API refleja reuniones y pendientes, y capturas fallidas como operaciones separadas ([API_CONTRACT.md, líneas 136–141 y 228–232](../api/API_CONTRACT.md)).
-- **Detalles pendientes:** tratamiento de temporales, logs, copias, cachés y fallos de borrado. No se debe introducir respaldo, exportación, retención o vencimiento automáticos por inferencia.
-
-### Migraciones
-
-No hay migraciones de producto ni un flujo Drizzle configurado en el árbol revisado. El plan de implementación posterior deberá definir versionado de esquema, momento de aplicación, compatibilidad entre versiones, transacciones según el motor elegido y respuesta ante migración fallida. También deberá tratar cambios destructivos como riesgo de pérdida de historial y decidir una estrategia compatible con la retención aprobada. No se define un comando, tabla de migraciones, política de copias ni mecanismo de rollback en este borrador.
-
-## Dependencias
-
-Drizzle + SQL y Zod están en el stack aprobado ([AGENTS.md, líneas 22–28](../../AGENTS.md)). No se propone añadir dependencias. El driver/adaptador de SQLite, las versiones de Drizzle y cualquier integración para PostgreSQL quedan sujetos al plan técnico y aprobaciones correspondientes; no se agregan al repositorio.
-
-## Riesgos y alternativas
-
-- **Persistencia accidental de transcripción:** una tabla, log o respuesta de API podría prolongar retención. Mitigación por evaluar: limitar el contrato persistente a reunión y pendientes y excluir texto de transcripción de respuestas/registros.
-- **Ampliación funcional implícita:** puntos clave, decisiones y seguimiento añaden categorías que el scope no nombra. Mitigación: mantenerlas como alternativa hasta aprobación del alcance.
-- **Ambigüedad temporal:** timestamps sin unidad, origen o límites generan resultados incompatibles. Mitigación: fijar convenciones antes de tipar el contrato final.
-- **Alternativa de motor confundida con decisión aprobada:** PostgreSQL cambiaría necesidades de ejecución y acceso. Mitigación: reportarlo como comparación, sin seleccionar ni integrar.
-- **Pérdida o exposición durante migraciones/eliminación:** no hay procedimiento existente para recuperar un historial local ni evidencia sobre logs/copias. Mitigación: definir esos límites antes de implementar cambios destructivos, sin suponer retención auxiliar.
-
-Alternativas que puede revisar la persona aprobadora:
-
-1. Mantener el esquema mínimo del scope: `Meeting` con resumen y `ActionItem`; segmentos solo durante el procesamiento y sin persistencia.
-2. Añadir categorías estructuradas de puntos clave, decisiones y seguimiento tras aprobar una ampliación funcional.
-3. Evaluar PostgreSQL frente al destino SQLite aprobado como cambio de arquitectura; no adoptarlo en este plan.
-4. No modificar el contrato API hasta que se resuelvan las preguntas de persistencia, marcas de tiempo y motor.
+1. El documento distingue el esquema realmente implementado de los datos aprobados que no se implementan como entidades independientes.
+2. El modelo vigente cubre reuniones, pendientes, capturas y staging temporal de notas, sin tabla ni endpoint de transcripción.
+3. Se mantienen las reglas aprobadas de borrado y conservación de audio y la ausencia de vencimiento automático.
+4. `meetingDate` y las categorías adicionales de notas se identifican como excluidos de v1; PostgreSQL queda fuera de la selección vigente.
+5. Se reflejan las decisiones SQLite/Drizzle/migraciones ya adoptadas sin presentarlas como pendientes de diseño.
+6. Se registran como pendientes la revisión de Ronald, la validación de helpers macOS/Windows, la aplicación de migración en una base de usuario y los detalles de permisos/filesystem que siguen abiertos.
+7. La revisión es documental y no modifica API, datos, dependencias ni código.
 
 ## Secuencia de trabajo
 
-1. Confirmar que el alcance, el método de procesamiento y las reglas de retención citadas representan la base de v1; resolver la discrepancia de revisiones MN-05 sin reabrir decisiones ya aprobadas por el scope.
-2. Aprobar si las categorías adicionales de notas forman parte de v1.
-3. Definir el contrato transitorio de segmentos y sus marcas de tiempo, conservando la regla actual de no persistir transcripciones.
-4. Revisar el modelo conceptual de reuniones y tareas frente al contrato API y decidir los campos candidatos pendientes, incluido `meetingDate`.
-5. Completar la matriz SQLite/PostgreSQL con consecuencias verificables para la aplicación local y solicitar aprobación si se propone cambiar el motor.
-6. Documentar acceso, borrado, migraciones y errores de forma coherente con la retención vigente.
-7. Someter el contrato y las decisiones pendientes a revisión humana. La actualización de `API_CONTRACT.md` y la implementación deben tratarse como pasos posteriores autorizados por separado.
+1. Contrastar el alcance y las decisiones técnicas vigentes con el contrato API, el esquema SQL y el repositorio de datos actuales.
+2. Registrar cualquier diferencia entre el contrato documental y el código sin tratar como pendiente una decisión ya adoptada.
+3. Mantener fuera de v1 las transcripciones persistentes, los segmentos temporizados, las categorías adicionales, `meetingDate` y PostgreSQL.
+4. Registrar el estado de revisión de Ronald y de validación por plataforma y migración.
+5. Someter este borrador a revisión humana; cualquier cambio funcional o de tratamiento requiere una revisión de alcance separada.
 
 ## Validación
 
-La validación de MN-10 será documental: comprobar cada campo contra el scope, clasificar persistencia/transitoriedad, recorrer operaciones de API y ciclo de vida, revisar que no se añada tratamiento y confirmar que SQLite/PostgreSQL se comparan sin atribuir aprobación no documentada. No se ejecutan comandos ni pruebas: no hay configuración de producto ni suite consolidada en la raíz ([AGENTS.md, líneas 33–35](../../AGENTS.md)).
+La validación de MN-10 es documental: comprobar que los recursos descritos coinciden con el esquema, contrato, migración y servicio actuales; confirmar las reglas de retención; y verificar que los pendientes no reabren decisiones ya aprobadas. No se ejecutan pruebas, migraciones ni comandos de producto como parte de esta revisión, conforme a las instrucciones del repositorio.
 
 ## Reversión
 
-Este borrador no cambia software ni datos, por lo que no requiere reversión técnica. Si una futura implementación introduce migraciones, el plan de implementación deberá describir compatibilidad, pérdida potencial de datos y respuesta ante fallos antes de aplicarlas. No se promete rollback seguro ni recuperación de bases locales sin definir y aprobar ese mecanismo.
+Este borrador no cambia software ni datos, por lo que no requiere reversión técnica. Cualquier futura modificación de esquema o migración necesitará un plan separado que considere compatibilidad, fallos de filesystem y el historial local, sin prometer copias o recuperación no aprobadas.
 
 ## Decisiones para revisión humana
 
-- Confirmar el alcance de categorías estructuradas: resumen y pendientes ya están aprobados; puntos clave, decisiones y seguimiento requieren decisión de producto.
-- Confirmar que los segmentos temporizados solo se usan durante procesamiento y no se persisten ni exponen en v1; fijar unidad y semántica temporal.
-- Mantener SQLite como destino de producto vigente y acordar la integración concreta, o aprobar expresamente cualquier cambio a PostgreSQL.
-- Acordar cómo el acceso por cuenta del sistema operativo se aplica a la base de datos y a los archivos locales de fallos.
-- Definir estrategia de migraciones y límites operativos de eliminación sin añadir retención no aprobada.
-- Determinar si las revisiones adicionales documentadas por MN-05 son un requisito para la implementación técnica y registrar evidencia si se realizan.
-- Aprobar el contrato API antes de actualizar su propuesta o iniciar implementación.
+- Revisar este resumen del modelo implementado y confirmar que las referencias documentales están correctas.
+- Registrar la disposición de Ronald sobre objeción o retiro del consentimiento.
+- Completar la validación real de los helpers de macOS y Windows y la verificación de migración en una base de usuario.
+- Resolver los detalles aún abiertos de permisos, protección de archivos y fallos de filesystem conforme al plan técnico correspondiente.
+- Aprobar por separado cualquier cambio futuro que incorpore transcripciones, categorías adicionales, otro motor, almacenamiento remoto o mayor retención.
