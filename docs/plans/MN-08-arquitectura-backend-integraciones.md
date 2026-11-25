@@ -41,6 +41,7 @@ No se encontró una plantilla de planes aprobada. Se conserva este archivo y el 
 - El alcance exige aplicación local en macOS y Windows, historial SQLite, captura combinada, idioma es/en por reunión, consulta y edición de título/resumen/pendientes, eliminación manual y las reglas de retención de audio y transcripción del scope.
 - Las decisiones técnicas adoptan API Bun + Hono en `127.0.0.1:4174`, helper Swift/Core Audio en macOS, helper Python/PyAudioWPatch/WASAPI en Windows, `bun:sqlite` + `drizzle-orm/bun-sqlite`, migraciones SQL versionadas, `gpt-transcribe` por REST con segmentos de 20 MiB y solapamiento breve, y AI SDK + OpenAI para notas estructuradas.
 - El procesamiento debe correr en segundo plano con estado durable. El reintento es manual con el mismo `captureId`; no hay reintentos automáticos ni timeout propio por llamada. Al reiniciar, trabajos en `transcribing` o `summarizing` pasan a `failed`; la transcripción transitoria se descarta y el audio queda para reintento.
+- Marco confirmó para esta implementación HTTP 202 en `POST /api/meetings`, sondeo por `GET /api/captures/{captureId}`, `meetingId` al completar, unicidad local por `captureId`, respuesta idempotente para solicitudes repetidas, staging temporal de notas nunca expuesto ni transcript y los orígenes exactos de SPA `http://127.0.0.1:5173` y `http://localhost:5173`. Estas aclaraciones están registradas en la sección 9 de `TECH_DESITIONS_MVP.md`.
 - Los estados adoptados son `starting → capturing → stopping → ready → transcribing → summarizing → completed`, con `failed` ante error. Las capturas fallidas se listan con `limit=20` por defecto, cursor opaco y `failureCode`; los errores usan `{ error: { code, message } }` sanitizado.
 - `meetingDate` y el borrado individual de un pendiente están excluidos por las decisiones técnicas. La transcripción no se persiste ni se expone.
 - `apps/api/`, `packages/contracts/` y `tests/` contienen solo `.gitkeep`. No existe backend, esquema Drizzle, migración ni suite integrada de producto.
@@ -55,16 +56,14 @@ No se encontró una plantilla de planes aprobada. Se conserva este archivo y el 
 | La ubicación inicial del proceso API es `apps/api/`, hoy un espacio reservado. | El mapa del repositorio reserva ese directorio para la API. | Confirmarlo al aprobar el plan; no mover ni integrar los POCs completos. |
 | No se crea workspace ni manifiesto raíz; API y web conservan procesos y manifiestos separados. | Decisión técnica del MVP. | Si la operación local requiere otra distribución, necesita decisión y aprobación adicionales. |
 
-## Preguntas abiertas y bloqueos de implementación
+## Detalles abiertos antes de cerrar implementación
 
-Estas preguntas no cambian el alcance de producto. Deben resolverse en la etapa de contrato/diseño antes de implementar los comportamientos afectados.
+Las aclaraciones de API, unicidad, reintentos, staging de resultado y origen local ya fueron confirmadas por Marco y están registradas en `TECH_DESITIONS_MVP.md` §9. No se reabren durante la implementación.
 
-1. **Contrato asíncrono:** ¿qué responde la solicitud que inicia el procesamiento, qué endpoint consulta el estado y cómo se obtiene el `meetingId` al completar? La decisión técnica exige trabajo en segundo plano y sondeo, pero el contrato y la guía frontend aún dicen que `POST /api/meetings` espera la respuesta completa y que no existe recurso de operación. Debe quedar una única semántica acordada y reflejada en ambos documentos.
-2. **Reenvío e idempotencia:** la decisión exige no duplicar una reunión por `captureId`, pero la API no define respuestas para captura ocupada, reintento concurrente o cierre entre respuesta de OpenAI y transacción SQLite. Definir esos resultados sin prometer procesamiento exactamente una vez en OpenAI ni ocultar el riesgo de costo repetido ya documentado.
-3. **Modelo físico:** `MN-10` es borrador. Antes de migrar, cerrar campos/nullabilidad, formato de IDs, marcas de tiempo, claves/relaciones, restricciones para impedir reuniones duplicadas por captura y orden/paginación del historial. Mantener fuera transcripción y `meetingDate`; no agregar puntos clave, decisiones o categorías nuevas.
-4. **Seguridad de la API local:** acordar el origen de navegador permitido y las defensas contra solicitudes de otros sitios a `127.0.0.1`. La API se liga a loopback y no hay login en v1; el contrato no define CORS ni protecciones por origen. No agregar cuentas ni dependencias sin aprobación.
-5. **Sistema de archivos:** definir cómo informar y recuperar errores al crear directorios, mover, borrar o leer audio y al aplicar permisos del sistema operativo. Las rutas de datos y la ausencia de cifrado propio o copias automáticas ya están adoptadas; los fallos concretos de operaciones de archivo no.
-6. **Validación en Windows:** identificar un equipo Windows disponible para verificar el helper y el ciclo completo. El POC documenta que su captura WASAPI debe probarse en Windows; no se puede declarar compatibilidad probada con una revisión solo en macOS.
+1. **Modelo físico:** fijar tipos SQL y nullabilidad de Meeting, ActionItem, Capture y el resultado temporal; incluir la restricción única por `captureId`, sin persistir transcripción ni agregar `meetingDate` u otras categorías.
+2. **Paginación y errores:** fijar orden estable del historial, forma opaca de cursor y catálogo estable de `failureCode` y errores por operación antes de cerrar los handlers.
+3. **Operación del sistema de archivos:** implementar los resultados ante errores de lectura, creación de directorios, renombrado y permisos, sin exponer rutas ni declarar éxito si no se cumplió el ciclo aprobado.
+4. **Validación en Windows:** identificar un equipo Windows para verificar el helper y el ciclo completo. La captura WASAPI no se puede declarar probada con una revisión solo en macOS.
 
 ## Alcance
 
@@ -132,8 +131,8 @@ El contrato actual conserva `meetingDate`, usa `processing` y describe procesami
 ## Secuencia de implementación propuesta
 
 1. **Aprobar este plan** y registrar cualquier recorte del objetivo “backend v1”. No tocar código antes de esa aprobación.
-2. **Alinear autoridad y documentos:** reconciliar `AGENTS.md`/`README.md` con las decisiones adoptadas y corregir enlaces a `MEETINGNOTES_V1_SCOPE.md`; confirmar que las revisiones UX/privacidad pendientes no cambian este alcance.
-3. **Cerrar el contrato asíncrono y modelo de datos:** actualizar API y guía frontend en una sola revisión; resolver respuesta de inicio, consulta, reintento, resultado final, captura fallida, idempotencia, `captureId`/reunión y esquema de migración. No añadir campos excluidos.
+2. **Alinear autoridad y documentos:** reconciliar `AGENTS.md`/`README.md` con las decisiones adoptadas y corregir enlaces a `MEETINGNOTES_V1_SCOPE.md`; las revisiones UX/privacidad no cambian el alcance de backend.
+3. **Aplicar el contrato ya acordado:** reflejar en API y guía el 202, sondeo por `captureId`, `meetingId`, idempotencia, orígenes permitidos y staging. Cerrar los detalles físicos del esquema, cursores y errores antes de rutas y migraciones; no añadir campos excluidos.
 4. **Preparar la aplicación API:** crear manifiesto/lockfile propios de `apps/api/` según el patrón aprobado, inicializar Hono y validar el host/puerto local, configuración de OpenAI y el límite de origen local.
 5. **Crear persistencia durable:** definir esquema Drizzle y migraciones SQL; preparar rutas locales por sistema operativo; aplicar migraciones antes de escuchar y fallar el arranque si una migración no puede aplicarse.
 6. **Integrar la captura:** implementar estados y protocolo con helper por plataforma; manejar permisos, salida inesperada, audio incompleto y errores sin aceptar mezcla parcial. Confirmar `ready` solo tras validar el WAV completo.
@@ -182,9 +181,9 @@ Marco indicó explícitamente que el resultado deseado era dejar aprobado el pla
 
 Antes de implementar las áreas afectadas, se deben completar y registrar estas puertas:
 
-1. Alinear `AGENTS.md` y `README.md` con las decisiones adoptadas en `TECH_DESITIONS_MVP.md`, sin cambiar el alcance.
-2. Acordar y reflejar en API y guía la semántica asíncrona, el estado consultable y la relación entre `captureId` y `meetingId`.
-3. Cerrar esquema físico, idempotencia, manejo de concurrencia y protección del origen local antes de implementar rutas y migraciones.
+1. Alinear `AGENTS.md` y `README.md` con las decisiones registradas en `TECH_DESITIONS_MVP.md`; actualizar contrato y guía, preservando el flujo ya confirmado.
+2. Cerrar tipos físicos, orden/cursor de historial y códigos estables antes de aplicar migraciones y completar handlers.
+3. Implementar la recuperación temporal acordada: nunca publicar Meeting antes de borrar el WAV; recuperar con staging si la API cae en finalización.
 4. Registrar si la revisión de Ronald pendiente en privacidad debe completarse antes de pruebas que envíen audio a OpenAI; no usar grabaciones reales hasta cumplir las aprobaciones y condiciones aplicables.
 5. Verificar captura y flujo completo en macOS y Windows; no declarar probada una plataforma sin evidencia de ejecución en ella.
 

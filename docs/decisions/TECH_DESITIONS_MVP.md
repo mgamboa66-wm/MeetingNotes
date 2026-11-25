@@ -24,7 +24,7 @@
 - La API escuchará solamente en **127.0.0.1:4174**.
 - El helper de captura será específico por sistema operativo: Swift en macOS y Python en Windows.
 - Para el MVP no se integra un shell de escritorio ni un instalador que inicie y empaquete conjuntamente la interfaz y la API. Este punto sigue el modelo operativo de los POCs.
-- Referencia: [POC de captura de audio](../apps/prototypes/poc-record-audio/README.md) y [POC de OpenAI](../apps/prototypes/poc-openai-macos/README.md).
+- Referencia: [POC de captura de audio](../../apps/prototypes/poc-record-audio/README.md) y [POC de OpenAI](../../apps/prototypes/poc-openai-macos/README.md).
 
 ## 2. Captura por plataforma
 
@@ -58,7 +58,7 @@ El POC mezcla las fuentes en una pista mono de 48 kHz y WAV PCM de 16 bits. Wind
 - La clave de OpenAI se configura solo en el servidor, siguiendo el POC con **OPENAI_API_KEY** en archivo local **.env** excluido de Git. No se envía al navegador ni se escribe en logs.
 - OpenAI es el único proveedor aprobado para este flujo. La eliminación local no implica borrar datos que OpenAI pudiera conservar; se aplican los controles de la cuenta de OpenAI descritos en el alcance.
 
-Referencia: [POC OpenAI para macOS](../apps/prototypes/poc-openai-macos/README.md).
+Referencia: [POC OpenAI para macOS](../../apps/prototypes/poc-openai-macos/README.md).
 
 ## 5. Procesamiento, idempotencia y recuperación
 
@@ -134,7 +134,7 @@ Los códigos son estables y los mensajes sanitizados para su presentación; no i
 - No se agrega borrado de un **ActionItem** individual. Para borrar pendientes se elimina la reunión con todos sus pendientes, según el alcance.
 - No se persisten transcripciones.
 
-Al actualizar la propuesta de [contrato API](api/API_CONTRACT.md), se deberán reflejar estas decisiones y el alcance aprobado.
+Al actualizar la propuesta de [contrato API](../api/API_CONTRACT.md), se deberán reflejar estas decisiones y el alcance aprobado.
 
 ## 8. Revisión operativa de privacidad y seguridad (MN-05)
 
@@ -156,11 +156,22 @@ Controles operativos adoptados para el MVP:
 
 La revisión pendiente de Ronald deberá confirmar que esta matriz y el comportamiento ante objeciones o retiro del consentimiento reflejan las decisiones esperadas. El aviso existente no decide por sí solo qué debe hacer el operador ante una objeción. MN-05 sigue pendiente de esa revisión y de registrar evidencia adicional que se solicite. Esta aprobación técnica no sustituye el plan aprobado que se requiere antes de integrar o implementar el producto completo.
 
+## 9. Aclaraciones de implementación del backend
+
+**Estado:** decisiones confirmadas explícitamente por Marco el 25 de noviembre de 2026 para implementar MN-08. No amplían el alcance de v1.
+
+- **Procesamiento asíncrono:** `POST /api/meetings` inicia el trabajo y responde HTTP 202 con `captureId` y `status`. El cliente consulta `GET /api/captures/{captureId}` hasta `completed` o `failed`; `completed` incluye `meetingId`. No se crea un recurso `Operation` separado.
+- **Solicitudes repetidas:** un POST mientras la captura ya se procesa devuelve el estado actual y no inicia otro trabajo. Si ya completó, devuelve la reunión existente. Si falló, solo un nuevo POST explícito inicia el reintento manual con el mismo audio y `captureId`. El `captureId` identifica el trabajo; no se agrega un encabezado `Idempotency-Key`.
+- **Unicidad local:** solo puede existir una reunión por `captureId`; las escrituras finales de la reunión, sus pendientes y el estado `completed` se protegen mediante una transacción SQLite y una restricción de unicidad.
+- **Cierre entre OpenAI, el archivo y SQLite:** se permite guardar temporalmente en SQLite el resumen estructurado y los pendientes generados, ocultos de la API y sin transcripción, mientras se confirma el borrado del WAV. Si el borrado falla y el archivo sigue presente, se descarta el resultado temporal, se marca `failed` y se conserva el audio reintentable. Al reiniciar, si existe resultado temporal y el WAV ya no existe, se finaliza la reunión; si el WAV existe, se descarta el resultado temporal y se marca la captura `failed`.
+- **Origen del navegador:** aceptar solo `http://127.0.0.1:5173` y `http://localhost:5173`; rechazar solicitudes sin `Origin` o con cualquier otro valor. El frontend usa el proxy local de Vite para enviar `/api` al proceso Bun en `127.0.0.1:4174`.
+- **API pública:** el resultado temporal y la ruta del archivo son internos. No se persisten ni devuelven transcripciones, rutas locales, audio, prompts ni mensajes internos de OpenAI.
+
 ## Referencias
 
 - [Alcance aprobado de MeetingNotes v1](MEETINGNOTES_V1_SCOPE.md)
-- [Contrato de API propuesto](api/API_CONTRACT.md)
-- [POC local de captura de audio](../apps/prototypes/poc-record-audio/README.md)
-- [POC OpenAI para macOS](../apps/prototypes/poc-openai-macos/README.md)
-- [Plan MN-05 de privacidad, seguridad y ciclo de vida de datos](plans/MN-05-privacidad-seguridad-ciclo-vida-datos.md)
+- [Contrato de API](../api/API_CONTRACT.md)
+- [POC local de captura de audio](../../apps/prototypes/poc-record-audio/README.md)
+- [POC OpenAI para macOS](../../apps/prototypes/poc-openai-macos/README.md)
+- [Plan MN-05 de privacidad, seguridad y ciclo de vida de datos](../plans/MN-05-privacidad-seguridad-ciclo-vida-datos.md)
 
