@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+node_modules/
+meetingnotes.sqlite*
+failed-audio/
+native/macos/build/
+native/windows/.venv/
