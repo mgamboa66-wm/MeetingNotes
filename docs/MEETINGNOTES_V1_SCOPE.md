@@ -20,6 +20,24 @@ MeetingNotes ayudará a convertir conversaciones de reuniones en un resumen y un
 
 Las tareas incluirán responsables y fechas solo cuando la reunión los mencione. El producto no debe presentar ideas tentativas como compromisos ni inventar asignaciones o fechas.
 
+### Prioridad de implementación y complejidad
+
+Esta prioridad ordena el trabajo dentro del alcance aprobado de v1; no elimina ni reduce ninguna función. **P0** identifica las capacidades que forman el flujo esencial y deben completarse para la entrega de v1. **P1** identifica una capacidad que se implementará después de que el flujo principal funcione, pero que también debe completarse antes de dar v1 por terminada. La complejidad es una estimación cualitativa preliminar, no una estimación de esfuerzo ni una decisión de arquitectura. Se mantienen las versiones de plataforma indicadas en la sección 5.
+
+| Prioridad | Función | Importancia | Complejidad relativa | Motivo |
+|---|---|---|---|---|
+| P0 | Aplicación local para macOS y Windows | Muy alta | Muy alta | Es la base que condiciona la captura y la integración por plataforma. |
+| P0 | Acceso mediante la cuenta del sistema operativo, sin cuentas ni inicio de sesión de MeetingNotes | Alta | Media | Define el límite de acceso a los datos locales desde el inicio. |
+| P0 | Capturar el audio del sistema y el micrófono en una sola pista | Muy alta | Muy alta | Es la entrada principal del producto y tiene detalles específicos por plataforma. |
+| P0 | Mostrar un aviso de consentimiento visible y persistente antes del uso | Alta | Baja | Debe estar presente antes del uso. El aviso no bloquea la captura ni verifica por sí mismo el consentimiento de las personas participantes. |
+| P0 | Enviar el audio a OpenAI para transcribirlo y procesar allí la transcripción para generar resumen y pendientes | Muy alta | Alta | Es el procesamiento central de MeetingNotes. El tratamiento local de la transcripción sigue las reglas de la sección 3. |
+| P0 | Elegir español o inglés por reunión | Alta | Baja–media | El idioma elegido determina el idioma del resumen y los pendientes. |
+| P0 | Guardar el historial local en SQLite con título, idioma elegido, resumen y pendientes | Alta | Media–alta | Permite conservar y consultar los resultados; la integración concreta de SQLite sigue abierta. |
+| P0 | Gestionar fallos: mostrar capturas fallidas, permitir reintentar o eliminar, descartar la transcripción y conservar el audio hasta reintento o eliminación manual, sin vencimiento automático | Muy alta | Muy alta | Combina privacidad, recuperación y manejo de datos durante errores. |
+| P0 | Consultar reuniones, resúmenes y pendientes | Alta | Media | Permite revisar los resultados guardados en el historial local. |
+| P0 | Eliminar manualmente una reunión y todos sus pendientes | Alta | Media | Da a la persona usuaria control explícito sobre los datos guardados. |
+| P1 | Editar el título, el resumen y los pendientes | Alta | Media | Se implementa después de que el flujo principal funcione; sigue siendo requisito de v1. |
+
 ## 3. Tratamiento de audio y resultados
 
 | Resultado del procesamiento | Qué se conserva localmente |
