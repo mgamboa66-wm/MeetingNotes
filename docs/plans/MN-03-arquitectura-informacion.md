@@ -1,126 +1,86 @@
 # MN-03 | Definir la arquitectura de información del espacio de notas
 
-**Estado:** Borrador para revisión humana; no aprobado.  
-**Objetivo:** Definir cómo las personas encuentran, revisan y organizan sus notas de reuniones.  
-**Revisión prevista:** Ronald revisa el mapa del sitio y la estructura de páginas y componentes.
+**Estado:** Aprobado por Marco (25 de noviembre de 2026).
 
-## Fuentes y autoridad
+**Objetivo:** Proponer cómo consultar, revisar, editar y eliminar las notas locales de reuniones, además de acceder a las capturas fallidas que requieren reintento o eliminación.
 
-- [Scope aprobado de v1](../MEETINGNOTES_V1_SCOPE.md): baseline de producto para este plan, según la instrucción de priorizar este documento. Describe una aplicación local, historial por computadora, edición de título/resumen/pendientes e idioma de salida por reunión.
-- [Instrucciones del repositorio](../../AGENTS.md): siguen aplicando sus límites de no implementar decisiones pendientes ni añadir supuestos de arquitectura.
-- [Plan MN-04](./MN-04-wireframes.md): plan aprobado para preparar wireframes estáticos. No determina la arquitectura de información, el almacenamiento ni la exportación.
-- [README principal](../../README.md): resume la etapa y estructura del proyecto, pero no define la jerarquía de las notas.
-- [Contrato de API](../api/API_CONTRACT.md) y [guía frontend](../FRONTEND_API_GUIDE.md): propuestas sujetas a revisión, no contratos implementados.
-- [README de `teams-notes`](<../additional resources/README.md>): contiene la lista de secciones mencionada en MN-03, pero describe otro proyecto. Se usa como referencia para la solicitud, no como decisión aprobada de MeetingNotes.
+**Registro de aprobación:** Marco aprobó esta propuesta el 25 de noviembre de 2026.
 
-El archivo `docs/MEETINGNOTES_V1_CONTEXT_TEMP.md`, mencionado en las instrucciones del repositorio, no está presente en el árbol actual. Este plan no lo usa como fuente.
+## Fuente de verdad y límites
 
-## Hechos y reglas del scope
+- [Alcance aprobado de v1](../decisions/MEETINGNOTES_V1_SCOPE.md): autoridad de producto para esta propuesta.
+- [Instrucciones del repositorio](../../AGENTS.md): aplican los límites de alcance y las decisiones técnicas pendientes.
 
-- El scope de v1 define que MeetingNotes convierte conversaciones en un resumen y una lista de pendientes.
-- Cada computadora tiene su propio historial; el scope dice que se guarda localmente y menciona SQLite. Este plan usa el historial local como contexto de navegación, pero no aprueba ni diseña el almacenamiento, el esquema o la persistencia.
-- La persona usuaria puede consultar y editar título, resumen y pendientes.
-- Los responsables y las fechas solo se incluyen si se mencionan en la reunión. No se deben presentar ideas tentativas como compromisos ni inventar asignaciones o fechas.
-- El scope excluye sincronización entre equipos, guardar transcripciones en el historial y marcar pendientes como completados.
+Esta propuesta traduce las capacidades aprobadas de v1 en una jerarquía de información. No implementa páginas, componentes, persistencia ni contratos técnicos.
 
-## Supuestos de trabajo
+## Requisitos del alcance que afectan la arquitectura
 
-- La navegación inicial se representará como una lista de reuniones y un detalle de reunión. Es una propuesta de IA para revisión, no una ruta implementada.
-- El resumen y las tareas de acción (pendientes) son las secciones respaldadas por el scope.
-- “Puntos clave”, “decisiones” y “seguimiento” se incluyen como secciones candidatas porque las solicita MN-03; requieren decisión de producto antes de considerarse parte del MVP.
-- Los nombres de páginas y componentes a continuación son conceptos de diseño, no nombres de archivos ni compromisos de implementación.
+- Cada computadora tiene su propio historial local de reuniones.
+- Se puede consultar y editar el título, el resumen y los pendientes de una reunión. El idioma elegido por reunión también forma parte del registro.
+- Los responsables y las fechas de los pendientes aparecen solo cuando se mencionan en la reunión. Las ideas tentativas no se presentan como compromisos.
+- Se puede eliminar manualmente una reunión junto con todos sus pendientes.
+- Si falla el procesamiento, la captura aparece en una lista para reintentar o eliminar. Se descarta la transcripción y el audio permanece local, sin vencimiento automático, hasta que el procesamiento termine correctamente o la persona usuaria elimine la captura. Si el procesamiento termina correctamente, se eliminan el audio y la transcripción locales.
+- La transcripción no forma parte del historial. Los pendientes no tienen estado de completado.
 
-## Alcance
-
-### Incluido
-
-- Proponer navegación para lista, detalle y edición de notas.
-- Proponer la jerarquía de contenido del detalle de reunión.
-- Registrar para decisión de Ronald la inclusión de búsqueda, exportación a Markdown y organización de notas en el MVP.
-- Distinguir las decisiones respaldadas por el scope de las propuestas pendientes.
-
-### Fuera de alcance
-
-- Aprobar o diseñar el almacenamiento, el esquema de persistencia o migraciones.
-- Definir el comportamiento de exportación a Markdown.
-- Incorporar búsqueda, carpetas, etiquetas o colecciones como capacidades del MVP sin decisión de producto.
-- Implementar páginas, componentes, contratos de API o dependencias.
-
-## Mapa del sitio candidato
+## Propuesta de navegación
 
 ```mermaid
 flowchart TD
-  L["Reuniones: lista"] --> D["Detalle de reunión"]
-  D --> E["Editor de notas"]
-  D --> S["Secciones de la nota"]
-  S --> R["Resumen: scope"]
-  S --> A["Tareas de acción / pendientes: scope"]
-  S --> K["Puntos clave: propuesta"]
-  S --> C["Decisiones: propuesta"]
-  S --> F["Seguimiento: propuesta"]
+  H["Espacio de notas"] --> L["Historial local"]
+  L --> R["Lista de reuniones"]
+  R --> D["Detalle de reunión"]
+  D --> E["Editar título, resumen y pendientes"]
+  D --> X["Eliminar reunión y sus pendientes"]
+  H --> F["Capturas fallidas"]
+  F --> T["Reintentar procesamiento"]
+  T -->|si termina correctamente| R
+  T -->|si vuelve a fallar| F
+  F --> Y["Eliminar captura"]
 ```
 
-La búsqueda, la exportación y la organización avanzada no se agregan a la navegación propuesta hasta que Ronald decida si pertenecen al MVP.
+## Jerarquía de información
 
-## Estructura conceptual de páginas y componentes
+### Lista de reuniones
 
-Los siguientes nombres son ilustrativos y no corresponden a componentes existentes:
+- Muestra las reuniones guardadas en el historial local.
+- Identifica cada reunión por su título.
+- Permite abrir el detalle de una reunión.
 
-- **Lista de reuniones**
-  - Encabezado y lista de reuniones.
-  - Elemento de reunión con los metadatos que se decidan mostrar.
-  - Estado vacío.
-  - Búsqueda y controles de organización solo si se aprueban para el MVP.
-- **Detalle de reunión**
-  - Encabezado con título y metadatos confirmados.
-  - Sección de resumen.
-  - Lista de pendientes, sin estado de “completado”.
-  - Secciones candidatas para puntos clave, decisiones y seguimiento, claramente marcadas como pendientes.
-  - Acceso al editor.
-- **Editor de notas**
-  - Edición del título, resumen y pendientes conforme al scope.
-  - Edición de secciones candidatas únicamente si se aprueban.
-  - Guardado, cancelación y persistencia sin especificar hasta que se decidan.
+### Detalle de reunión
 
-Queda abierta la decisión de integrar el editor en el detalle o presentarlo como una vista separada. También debe decidirse si las secciones se presentan en una página continua, como pestañas o mediante otra organización.
+- Presenta el título, el idioma elegido, el resumen y los pendientes.
+- Incluye responsables y fechas únicamente cuando se mencionan en la reunión.
+- Permite pasar a la edición y eliminar manualmente la reunión junto con sus pendientes.
+- No presenta la transcripción ni un control para marcar pendientes como completados.
 
-## Decisiones para Ronald
+### Edición
 
-| Decisión | Opciones a valorar | Estado |
-|---|---|---|
-| Puntos clave, decisiones y seguimiento | Incluir en el MVP, combinar con resumen/pendientes o posponer | Pendiente |
-| Búsqueda | No incluir; buscar títulos; buscar títulos y contenido | Pendiente |
-| Organización | Lista sencilla; etiquetas; carpetas u otra agrupación | Pendiente |
-| Exportación a Markdown | Excluir del MVP o definirla con su contenido y comportamiento | Pendiente |
-| Edición | Integrada en el detalle o en una vista separada | Pendiente |
-| Orden y metadatos de la lista | Acordar qué mostrar y cómo ordenar | Pendiente |
+- Permite editar el título, el resumen y los pendientes, conforme al alcance de v1.
+- No añade campos ni secciones de contenido adicionales.
 
-La tabla registra decisiones de producto; no elige una opción ni aprueba almacenamiento o exportación.
+### Capturas fallidas
+
+- Presenta las capturas cuyo procesamiento falló y ofrece reintentar el procesamiento o eliminar la captura.
+- No presenta ni conserva la transcripción fallida. El audio permanece local, sin vencimiento automático, mientras la captura siga pendiente de un reintento exitoso o eliminación manual, según el alcance.
+
+## Decisiones de presentación
+
+La propuesta usa una lista de reuniones y una vista de detalle, con las capturas fallidas en una lista propia. La edición ocurre dentro del detalle mediante un modo de edición, sin una pantalla aparte. El alcance no prescribe el orden de la lista ni la disposición visual; esos aspectos se dejan al diseño de interfaz y no alteran esta jerarquía de información.
 
 ## Componentes y contratos afectados
 
-No hay páginas ni componentes de producto implementados en `apps/web/`. El impacto previsto es únicamente una arquitectura conceptual de información para lista, detalle y editor. No se proponen cambios al contrato de API: las propuestas actuales no definen búsqueda ni exportación, y no cubren las secciones candidatas como conceptos separados.
+No hay páginas ni componentes del producto implementados en `apps/web/`. Este documento define únicamente una propuesta conceptual de información. No modifica el contrato de API, no elige persistencia o almacenamiento y no añade dependencias.
 
-No se agregan dependencias. La elección de herramientas de diseño y la ubicación de cualquier artefacto visual quedan fuera de este plan.
+## Criterios de revisión
 
-## Riesgos y alternativas
+- La propuesta cubre consulta, edición y eliminación manual de reuniones con sus pendientes.
+- La lista de capturas fallidas refleja las acciones de reintento y eliminación previstas por el alcance.
+- El detalle respeta los datos permitidos, incluidos idioma, resumen y pendientes; responsables y fechas solo aparecen cuando se mencionan.
+- No se incluyen transcripciones en el historial ni estados de completado para pendientes.
+- No se incorporan capacidades o contenido fuera del alcance aprobado.
 
-- **Confundir secciones candidatas con alcance aprobado:** marcar puntos clave, decisiones y seguimiento como pendientes hasta que Ronald los decida.
-- **Solapamiento de contenido:** aclarar si “resumen ejecutivo” es el resumen del scope o una sección adicional; definir diferencias entre decisiones, pendientes y seguimiento antes de implementarlas.
-- **Cerrar almacenamiento o exportación por accidente:** limitar este plan a organización conceptual; no fijar formato, ubicación, esquema ni operación de archivos.
-- **Lista sencilla frente a organización avanzada:** una lista sencilla reduce decisiones; etiquetas o carpetas pueden facilitar la organización, pero amplían el alcance y requieren decisión.
-- **Editor integrado frente a vista separada:** integrar reduce cambios de contexto; una vista separada puede dar más espacio. La decisión queda abierta.
-
-## Secuencia y validación
-
-1. Confirmar qué secciones forman parte del MVP y distinguirlas de las candidatas.
-2. Revisar con Ronald las alternativas de navegación, edición, búsqueda, organización y exportación.
-3. Ajustar el mapa del sitio y la estructura conceptual según sus decisiones.
-4. Verificar que lista, detalle y editor están representados; que no se incluye el estado “completado”; y que almacenamiento y exportación siguen sin aprobarse en este plan.
-5. Registrar comentarios y decisiones de Ronald. El criterio de aceptación solo se satisface cuando la revisión ocurrió.
-
-No hay comandos de validación de producto configurados para esta tarea. No se ejecutan pruebas ni comandos de los POCs.
+La propuesta queda aprobada. Este documento no cierra el issue de GitHub.
 
 ## Reversión
 
-No aplica reversión de software o datos: este plan no modifica el producto ni define persistencia. Un cambio posterior sería una revisión de la propuesta de IA.
+No aplica reversión de software o datos: este plan solo modifica la propuesta documental de arquitectura de información.
