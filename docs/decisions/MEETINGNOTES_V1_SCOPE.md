@@ -70,4 +70,4 @@ La transcripción no se guarda en el historial. El audio solo permanece localmen
 
 ## 7. Nota sobre documentos técnicos
 
-Este documento fija el alcance de producto aprobado. El contrato de API y la guía de integración para frontend deben mantenerse alineados con estas decisiones, incluyendo el idioma por reunión, el procesamiento que espera la respuesta completa y la lista de capturas fallidas para reintentar o eliminar. Esos documentos detallarán las rutas, payloads y errores técnicos.
+Este documento fija el alcance de producto aprobado. El contrato de API y la guía de integración para frontend deben mantenerse alineados con estas decisiones, incluyendo el idioma por reunión y la lista de capturas fallidas para reintentar o eliminar. El backend procesa en segundo plano y permite consultar el estado hasta que termine; este detalle técnico no cambia el resultado de producto. Los documentos técnicos detallan las rutas, payloads y errores.

@@ -4,9 +4,9 @@ MeetingNotes convierte conversaciones de reuniones en un resumen y una lista de 
 
 ## Estado del proyecto
 
-El alcance de producto de v1 está aprobado y se describe en [docs/decisions/MEETINGNOTES_V1_SCOPE.md](docs/decisions/MEETINGNOTES_V1_SCOPE.md). Las decisiones técnicas adoptadas están en [TECH_DESITIONS_MVP.md](docs/decisions/TECH_DESITIONS_MVP.md). El backend aún no está integrado; [MN-08](docs/plans/MN-08-arquitectura-backend-integraciones.md) es el plan aprobado para implementarlo y no significa que el código ya exista.
+El alcance de producto de v1 está aprobado y se describe en [docs/decisions/MEETINGNOTES_V1_SCOPE.md](docs/decisions/MEETINGNOTES_V1_SCOPE.md). Las decisiones técnicas adoptadas están en [TECH_DESITIONS_MVP.md](docs/decisions/TECH_DESITIONS_MVP.md). El backend MN-08 ya tiene una implementación inicial en `apps/api/`; la integración de la interfaz y la verificación en macOS/Windows siguen pendientes.
 
-El repositorio contiene dos POCs independientes. Todavía no contiene una aplicación de producto integrada ni un manifiesto raíz de dependencias o workspace. El contrato API y la guía para frontend son propuestas de trabajo alineadas al alcance aprobado.
+El repositorio contiene dos POCs independientes y el backend local separado. No contiene una aplicación de escritorio integrada ni un manifiesto raíz de dependencias o workspace. El contrato API y la guía frontend describen el contrato del backend implementado.
 
 ## Alcance aprobado de v1
 
@@ -23,12 +23,12 @@ El documento de alcance aprobado contiene las reglas de negocio completas, compa
 ## Estructura
 
     apps/
-      api/                 # reservado para la API del producto, aún no integrada
+      api/                 # backend Bun + Hono MN-08
       web/                 # reservado para la interfaz del producto, aún no integrada
       prototypes/          # dos POCs independientes con configuración propia
     packages/
       contracts/           # reservado para contratos compartidos
-    tests/                 # reservado; sin suite del producto
+    tests/                 # reservado; sin suite consolidada del producto
     docs/
       api/
         API_CONTRACT.md
@@ -59,12 +59,12 @@ Cada POC conserva su propio manifiesto, lockfile e instrucciones en su README. N
 
 El detalle técnico adoptado se registra en [TECH_DESITIONS_MVP.md](docs/decisions/TECH_DESITIONS_MVP.md). Los POCs siguen siendo experimentos separados; MN-08 autoriza la implementación del backend descrito, no la conversión íntegra de un POC en producto.
 
-## Decisiones técnicas pendientes
+## Verificación y trabajo pendiente
 
-- Tipos/nullabilidad finales de SQLite, orden/cursor de historial, catálogo de errores y casos de fallo del sistema de archivos.
 - Verificación real de captura Windows en un equipo Windows.
+- Verificación del helper, permisos y flujo de captura en macOS con el entorno local.
 - Revisión pendiente de Ronald sobre objeciones o retiro del consentimiento; no atribuirle aprobación.
-- CI y publicación, fuera del plan backend vigente.
+- Integración de la SPA, CI y publicación, fuera del backend implementado.
 
 El alcance completo de v1 y las decisiones de negocio no deben volver a marcarse como pendientes. Cualquier ampliación o cambio de ese alcance requiere aprobación.
 

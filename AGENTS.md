@@ -9,14 +9,14 @@ La aprobación del alcance autoriza únicamente ese comportamiento de producto. 
 ## Mapa del repositorio
 
 - **apps/web/**: espacio reservado para la interfaz del producto; todavía no contiene una aplicación integrada.
-- **apps/api/**: espacio reservado para la API del producto; todavía no contiene una API integrada.
+- **apps/api/**: implementación del backend MN-08; consulta su README para el estado de dependencias, configuración y validación pendiente.
 - **apps/prototypes/**: dos POCs con código y configuración independientes. Ninguno forma una arquitectura de producto aprobada.
 - **packages/contracts/**: espacio reservado; todavía no contiene contratos implementados.
 - **tests/**: espacio reservado; todavía no hay una suite de pruebas del producto.
 - **docs/decisions/MEETINGNOTES_V1_SCOPE.md**: alcance de producto aprobado para v1.
 - **docs/decisions/TECH_DESITIONS_MVP.md**: decisiones técnicas adoptadas para el MVP; consultar su estado y las cuestiones abiertas registradas aquí.
-- **docs/api/API_CONTRACT.md**: propuesta técnica de contrato API alineada con el alcance.
-- **docs/api/FRONTEND_API_GUIDE.md**: guía de trabajo basada en la propuesta API.
+- **docs/api/API_CONTRACT.md**: contrato técnico del backend v1; los detalles abiertos deben coincidir con MN-08.
+- **docs/api/FRONTEND_API_GUIDE.md**: guía de integración basada en el contrato vigente.
 - **docs/plans/**: planes y propuestas con estados diferentes; comprueba el estado de cada documento antes de tratarlo como aprobado.
 - **README.md**: resumen del proyecto, su estructura y las decisiones técnicas aún abiertas.
 
@@ -35,7 +35,7 @@ Para el backend MN-08 también se adoptó: `POST /api/meetings` responde 202 y e
 
 ## Desarrollo y validación
 
-Los POCs de **apps/prototypes/** tienen manifiestos y lockfiles independientes. No hay un manifiesto raíz, workspace de producto ni configuración de pruebas consolidada. No inventes comandos de desarrollo o validación para la raíz. Consulta el README del POC correspondiente para sus instrucciones y no ejecutes comandos de npm, bun u otras herramientas sin que la persona usuaria lo solicite.
+El backend de **apps/api/** tiene manifiesto y lockfile propios; los POCs de **apps/prototypes/** mantienen los suyos. No hay un manifiesto raíz, workspace de producto ni configuración de pruebas consolidada. No inventes comandos de desarrollo o validación para la raíz. Consulta el README del componente y no ejecutes comandos de npm, bun u otras herramientas sin que la persona usuaria lo solicite.
 
 ## Convenciones
 
@@ -50,7 +50,6 @@ El alcance de producto de v1 está aprobado, pero no equivale a un plan técnico
 
 ## Decisiones técnicas que siguen abiertas
 
-- Tipos y nullabilidad del esquema SQLite, orden/cursor del historial y catálogo final de códigos de error.
 - Manejo de fallos de filesystem fuera del caso de borrado de audio tras generación, y permisos concretos de archivos por sistema operativo.
 - Revisión de Ronald sobre el tratamiento ante objeción o retiro del consentimiento, según el registro de MN-05/decisiones técnicas. No atribuir aprobación pendiente.
 - Verificación real del helper de captura Windows en un equipo Windows.

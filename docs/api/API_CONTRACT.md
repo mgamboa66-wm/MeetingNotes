@@ -1,6 +1,6 @@
 # MeetingNotes — contrato de API
 
-**Estado:** contrato técnico del backend v1 actualizado según las decisiones adoptadas y las aclaraciones aprobadas por Marco el 25 de noviembre de 2026. Los detalles expresamente señalados como pendientes siguen abiertos.
+**Estado:** contrato técnico del backend v1 aplicado por MN-08. El historial usa orden descendente por fecha de creación e id; los códigos de error estables están documentados en la sección 4.
 
 ## 1. Alcance que condiciona la API
 
@@ -55,11 +55,20 @@ El audio fallido y la metadata mínima para mostrar la cola persisten localmente
 
 Estados: **starting**, **capturing**, **stopping**, **ready**, **transcribing**, **summarizing**, **completed** y **failed**. Una captura fallida puede volver a procesarse manualmente con el mismo **captureId**. Una captura completada conserva su metadata y `meetingId`, pero no su audio.
 
-### 2.4 Operation
+### 2.4 Procesamiento asíncrono (sin recurso Operation)
 
 No se crea un recurso Operation separado. `Capture` identifica el trabajo durable: `POST /api/meetings` lo inicia y `GET /api/captures/{captureId}` devuelve su estado y, al completar, `meetingId`.
 
-## 3. Endpoints propuestos
+### 2.5 Persistencia SQLite
+
+- `captures`: id opaco, estado, nombre de archivo privado nullable, timestamps enteros en milisegundos UTC, código de fallo y parámetros de la solicitud de procesamiento. El nombre de archivo nunca sale de la capa de persistencia.
+- `meetings`: id, `captureId` único con clave foránea, título nullable, idioma, resumen y timestamps enteros. No contiene fecha de reunión ni transcripción.
+- `action_items`: id, `meetingId` con borrado en cascada, tarea, responsable nullable y fecha textual nullable.
+- `processing_staging`: `captureId`, resumen, JSON de pendientes y timestamp. Es exclusivamente interno. No almacena audio, transcripción, prompt ni respuesta cruda del proveedor.
+
+Las claves foráneas están activadas. Los estados e idiomas tienen restricciones SQL. El registro de captura persiste después de completarse para permitir consultar el resultado idempotente; su referencia al audio se limpia al finalizar.
+
+## 3. Endpoints
 
 Las rutas y respuestas descritas incorporan las decisiones de backend adoptadas. Los códigos y errores que no se especifican aquí se mantienen sujetos al catálogo de errores estable de la implementación.
 
@@ -82,11 +91,11 @@ Respuesta 200:
 
 Inicia la captura local mediante el componente nativo de la plataforma. No recibe audio ni una ruta de archivo. El audio del sistema y el micrófono se combinan en una sola pista.
 
-Respuesta 201:
+Respuesta 201. El body refleja el inicio; consultar la captura puede devolver un estado más reciente:
 
     {
       "captureId": "cap_opaque_value",
-      "status": "capturing",
+      "status": "starting",
       "startedAt": "2026-11-24T10:00:00-06:00"
     }
 
@@ -105,6 +114,15 @@ Respuesta 200:
 
 El campo **level** se puede omitir cuando no corresponda. En estado `completed`, la respuesta incluye `meetingId`; en los otros estados se omite.
 
+Respuesta cuando ya completó:
+
+    {
+      "captureId": "cap_opaque_value",
+      "status": "completed",
+      "meetingId": "meeting_opaque_value",
+      "updatedAt": "2026-11-24T10:32:00-06:00"
+    }
+
 #### POST /api/captures/{captureId}/stop
 
 Detiene la captura y valida que el archivo combinado esté completo. No transcribe ni genera notas; deja la captura lista para procesar.
@@ -119,9 +137,9 @@ Respuesta 200:
 
 #### GET /api/captures?status=failed&limit=20&cursor=...
 
-Lista capturas fallidas cuyo audio está disponible para reintentar. Usa `limit=20` por defecto y cursor opaco. La lista no expone rutas ni audio.
+Lista capturas fallidas cuyo audio está disponible para reintentar. Usa `limit=20` por defecto, acepta hasta 100 y usa un cursor opaco. El orden es `failedAt` descendente y luego `captureId` descendente. La lista no expone rutas ni audio.
 
-Respuesta 200 propuesta:
+Respuesta 200:
 
     {
       "items": [
@@ -140,7 +158,7 @@ Respuesta 200 propuesta:
 
 Elimina manualmente una captura fallida y su audio local. No aplica una fecha de vencimiento automática.
 
-Respuesta 204 propuesta, sin cuerpo.
+Respuesta 204, sin cuerpo. Si la captura está activa o procesándose, la API devuelve 409.
 
 ### 3.3 Crear una reunión y procesar la captura
 
@@ -148,11 +166,11 @@ Respuesta 204 propuesta, sin cuerpo.
 
 Inicia en segundo plano la transcripción y generación de notas de una captura lista o fallida. El estado se persiste y se consulta mediante `GET /api/captures/{captureId}`.
 
-Cabecera propuesta:
+Cabecera:
 
 - **Content-Type: application/json**
 
-`captureId` es la clave local de idempotencia. No se requiere `Idempotency-Key`.
+`captureId` es la clave local de idempotencia. No se requiere `Idempotency-Key`. Si se omite `title`, se guarda como `null` hasta que la persona usuaria lo edite.
 
 Solicitud:
 
@@ -164,7 +182,7 @@ Solicitud:
 
 **captureId** y **outputLanguage** son obligatorios. **outputLanguage** acepta **es** o **en**. **title** es opcional. `meetingDate` no forma parte de v1.
 
-No se aceptan audio, transcripción, resumen ni pendientes en esta solicitud: los genera el backend. Un inicio nuevo responde HTTP 202 con el `captureId` y el estado actual. Si ya hay un trabajo activo, una solicitud repetida devuelve el estado actual sin iniciar otro trabajo. Si ya completó, una solicitud repetida devuelve la reunión existente. Si falló, un nuevo POST explícito inicia el reintento manual con el mismo audio y `captureId`.
+No se aceptan audio, transcripción, resumen ni pendientes en esta solicitud: los genera el backend. Un inicio nuevo responde HTTP 202 con el `captureId` y el estado actual. Si ya hay un trabajo activo, una solicitud repetida devuelve el estado actual sin iniciar otro trabajo. Si ya completó con los mismos parámetros, una solicitud repetida devuelve la reunión existente; si difieren, devuelve 409. Si falló, un nuevo POST explícito inicia el reintento manual con el mismo audio y `captureId`.
 
 Respuesta de aceptación, HTTP 202:
 
@@ -201,12 +219,21 @@ La escritura final de Meeting, ActionItems y el estado `completed` se protege en
 
 #### GET /api/meetings?limit=20&cursor=...
 
-Lista el historial local con paginación. `limit` es 20 por defecto y el cursor es opaco.
+Lista el historial local con paginación. `limit` es 20 por defecto y acepta hasta 100; el cursor es opaco. El orden estable es `createdAt` descendente y, en empate, id descendente. El cursor base64url representa ambos valores. Los elementos incluyen campos de Meeting excepto la lista de pendientes, que se carga con el detalle.
 
 Respuesta 200:
 
     {
-      "items": [],
+      "items": [
+        {
+          "id": "meeting_opaque_value",
+          "title": "Planificación semanal",
+          "outputLanguage": "es",
+          "summary": "Se revisó el avance del proyecto.",
+          "createdAt": "2026-11-24T10:32:00.000Z",
+          "updatedAt": "2026-11-24T10:32:00.000Z"
+        }
+      ],
       "nextCursor": null
     }
 
@@ -234,17 +261,17 @@ Solicitud:
 
 Edita **task**, **assignee** o **dueDateText**.
 
-El alcance aprobado contempla eliminar una reunión junto con todos sus pendientes, pero no especifica la eliminación individual de un ActionItem. No se incluye esa ruta en esta propuesta.
+El alcance aprobado contempla eliminar una reunión junto con todos sus pendientes, pero no especifica la eliminación individual de un ActionItem. No se incluye esa ruta.
 
 #### DELETE /api/meetings/{meetingId}
 
 Elimina manualmente la reunión y todos sus ActionItems asociados. El historial guardado no vence automáticamente.
 
-Respuesta 204 propuesta, sin cuerpo.
+Respuesta 204, sin cuerpo.
 
 ## 4. Errores
 
-Formato común propuesto:
+Formato común:
 
     {
       "error": {
@@ -253,17 +280,18 @@ Formato común propuesto:
       }
     }
 
-Códigos HTTP candidatos:
+Códigos HTTP y usos:
 
 | Código | Uso |
 |---|---|
-| 400 | Solicitud mal formada o validación fallida. |
-| 403 | `Origin` ausente o no permitido. |
-| 404 | Reunión o captura desconocida. |
-| 409 | Captura en estado incompatible o la misma captura se reenvía con parámetros incompatibles. |
-| 502 | OpenAI devuelve una respuesta fallida o inválida. |
-| 503 | OpenAI u otra dependencia temporal no está disponible. |
-| 500 | Error local inesperado, por ejemplo al persistir resultados. |
+| 400 | `INVALID_REQUEST`: JSON, payload, cursor o query mal formado. |
+| 403 | `ORIGIN_NOT_ALLOWED`: `Origin` ausente o distinto de los dos permitidos. |
+| 404 | `NOT_FOUND`: reunión, captura o pendiente desconocido. |
+| 409 | `CONFLICT`, `CAPTURE_ACTIVE`, `CAPTURE_NOT_READY` o `AUDIO_MISSING`: transición incompatible o solicitud idempotente con parámetros distintos. |
+| 500 | `INTERNAL_ERROR` o `AUDIO_DELETE_FAILED`: error local inesperado o fallo al borrar audio por petición manual. |
+| 503 | `OPENAI_NOT_CONFIGURED`: falta la clave antes de aceptar el procesamiento. |
+
+Los errores que ocurren después de aceptar el trabajo no cambian la respuesta HTTP original 202. La captura pasa a `failed`; `GET /api/captures/{captureId}` devuelve HTTP 200 e incluye `failureCode`. Los códigos de proveedor y validación asíncronos están enumerados en la sección 7.
 
 Cuando falla el procesamiento de una captura, la respuesta no debe borrar el audio: debe dejarlo recuperable desde la cola de fallidas. Si falla el borrado del audio durante la finalización, no se expone la reunión; se descarta el resultado estructurado temporal, se marca la captura como `failed` y se conserva el audio. Los mensajes no deben incluir claves, rutas locales, audio, transcripciones ni información sensible de OpenAI. Los códigos deben permanecer estables para que el frontend no dependa de mensajes libres.
 
@@ -282,10 +310,22 @@ Sin imponer estructura de carpetas, se recomienda separar estas responsabilidade
 
 Esto separa responsabilidades y permite cambiar adaptadores sin alterar el contrato HTTP. No fija versiones ni añade dependencias fuera del stack técnico aprobado.
 
-## 6. Relación con los POCs y decisiones técnicas por cerrar
+## 6. Relación con los POCs y decisiones de implementación
 
 Los POCs actuales usan rutas como GET /api/health, GET /api/session, POST /api/capture/start y POST /api/capture/stop. El POC de OpenAI cubre macOS, no crea reuniones persistentes y no ofrece la cola local de capturas fallidas. El backend de v1 agrega SQLite, idioma por reunión, procesamiento durable en segundo plano y reintento o eliminación manual del audio fallido.
 
-El alcance y las decisiones técnicas descritas arriba están aprobados. El contrato aún debe fijar el orden estable del historial de reuniones y el catálogo completo de `failureCode` y errores de cada operación antes de cerrar su implementación. No se reabren la exclusión de `meetingDate`, la eliminación conjunta de pendientes, el procesamiento asíncrono, la paginación de capturas fallidas ni los orígenes locales aprobados.
+El alcance y las decisiones técnicas descritas arriba están aprobados. El backend implementa la paginación estable del historial por `createdAt` descendente e id descendente. El cursor es base64url opaco con ambos valores. La lista de fallidas se ordena por `failedAt` descendente e id descendente. Los códigos de error y fallo expuestos se limitan a los descritos arriba y a los códigos de captura enumerados en la sección 7. No se reabren la exclusión de `meetingDate`, la eliminación conjunta de pendientes, el procesamiento asíncrono, la paginación de capturas fallidas ni los orígenes locales aprobados.
 
 La cuenta de OpenAI usará sus controles vigentes. Borrar una copia local no elimina datos que OpenAI pudiera conservar conforme a esos controles. Los costos pueden variar según la duración y los modelos; v1 no tendrá un límite de gasto dentro de la aplicación.
+
+## 7. Códigos estables de fallo de captura
+
+Cuando una solicitud asíncrona ya fue aceptada, el resultado de procesamiento se consulta en Capture. Si termina en `failed`, `failureCode` será uno de estos valores sanitizados:
+
+- `CAPTURE_UNAVAILABLE`, `CAPTURE_FAILED`, `CAPTURE_INTERRUPTED`: el helper no pudo iniciar o confirmar una captura completa.
+- `AUDIO_INVALID`, `AUDIO_MISSING`: el WAV no cumple el formato esperado o ya no está disponible.
+- `OPENAI_UNAVAILABLE`, `OPENAI_REJECTED`, `TRANSCRIPTION_INVALID`, `SUMMARY_INVALID`: falló la dependencia o la validación de su resultado.
+- `AUDIO_CLEANUP_FAILED`: las notas estaban listas, pero no se pudo borrar el WAV; se descarta el staging, la captura queda fallida y el audio se conserva.
+- `PROCESSING_FAILED`: error local no clasificado durante el procesamiento.
+
+Los códigos no incluyen mensajes del proveedor, rutas, audio, transcripción ni datos de la reunión. `GET /api/captures/{captureId}` incluye `failureCode` y `failedAt` para una captura fallida.
