@@ -41,6 +41,7 @@ El backend de **apps/api/** tiene manifiesto y lockfile propios; los POCs de **a
 
 - Aplica los principios SOLID al diseñar el código, según corresponda al contexto del proyecto.
 - El equipo usa Codex; sigue este archivo y cualquier instrucción vigente más específica que aparezca en el repositorio.
+- Nombra las migraciones nuevas con `--name` representativo del cambio (por ejemplo, `initial_meetingnotes_schema`) y mantén el `tag` de `drizzle/meta/_journal.json` sincronizado con el nombre del archivo `.sql`. Para cambios posteriores, crea una migración nueva en vez de editar una ya aplicada.
 - Mantén las instrucciones factuales y separa el alcance aprobado de las decisiones técnicas aún abiertas.
 - Mantén separados los POCs hasta que un plan aprobado defina si alguno se convierte en base del producto.
 
