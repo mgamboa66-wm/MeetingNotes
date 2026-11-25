@@ -1,135 +1,91 @@
 # MN-05 | Requisitos de consentimiento, privacidad, seguridad y ciclo de vida de los datos
 
-**Estado:** Borrador para revisión humana; no aprobado.
-**Objetivo:** registrar cómo el scope de v1 ya cubre la lógica de negocio de tratamiento de audio y notas, y dejar trazabilidad de las revisiones y aprobaciones que faltan antes de habilitar ese tratamiento.
-**Resultado esperado:** matriz de flujo y tratamiento revisada por Ronald, decisiones pendientes visibles y aprobaciones de Producto y Privacidad identificadas con evidencia.
+**Estado:** Plan documental aprobado por Marco (25 de noviembre de 2026).
 
-> Este plan registra requisitos y autoridad documental. No autoriza captura, transmisión, procesamiento externo, almacenamiento o retención de datos reales.
+**Registro de aprobación:** Marco aprobó este plan el 25 de noviembre de 2026.
 
-## Fuentes y autoridad
+**Objetivo:** documentar el tratamiento de datos aprobado para v1 y separar esos requisitos de los detalles técnicos que siguen pendientes.
 
-- [Ticket MN-05](#): requisito de documentar consentimiento, indicadores de grabación, denegación de permisos, procesamiento local/externo, acceso, almacenamiento, retención, eliminación y tratamiento de notas. Solicita revisión de Ronald y aprobaciones de Producto y Privacidad.
-- [Scope de v1](../MEETINGNOTES_V1_SCOPE.md): se declara alcance de producto aprobado y ya define la lógica de negocio relevante para consentimiento, captura, OpenAI, acceso local, resultados y eliminación.
-- [Instrucciones del repositorio](../../AGENTS.md) y [README](../../README.md): mantienen pendientes privacidad, consentimiento, seguridad y tratamiento, y condicionan captura, transferencia y retención a aprobación explícita.
-- [MN-01](./MN-01-alcance-mvp.md): registra la discrepancia entre el scope y las instrucciones, y que no se adjuntó evidencia atribuible de aprobación de Ronald, Producto y Privacidad.
-- [Contrato de API](../api/API_CONTRACT.md) y [guía frontend](../FRONTEND_API_GUIDE.md): propuestas sujetas a revisión; no sustituyen al scope ni aprueban tratamiento de datos.
-- [Additional resources](../additional%20resources/README.md): referencia exploratoria de Whisper local y Claude; no constituye una decisión de MeetingNotes.
+**Resultado esperado:** matriz revisada por Ronald, Producto y Privacidad, con decisiones técnicas pendientes y evidencia de la revisión identificadas.
 
-No se encontró una plantilla aprobada para planes. Este documento sigue el formato Markdown de planes existente sin presentarlo como plantilla normativa.
+> El alcance de producto v1 ya está aprobado. Este plan lo documenta; no reabre sus decisiones ni autoriza implementar detalles técnicos pendientes, cambiar el flujo aprobado o ampliar el tratamiento de datos. La aprobación de este plan documental no aprueba una política adicional ni autoriza procesar datos reales fuera del flujo de v1.
 
-## Hechos y lógica de negocio existente
+## Fuente de verdad y autoridad
 
-El scope de v1 ya cubre estos requisitos de producto:
+- [Alcance aprobado de v1](../decisions/MEETINGNOTES_V1_SCOPE.md): autoridad de producto para el flujo y el tratamiento de datos descritos aquí.
+- [Instrucciones del repositorio](../../AGENTS.md): determina el stack aprobado, los detalles técnicos aún abiertos y la necesidad de un plan de implementación aprobado antes de integrar el producto.
+- [Contrato de API](../api/API_CONTRACT.md) y [guía frontend](../FRONTEND_API_GUIDE.md): propuestas técnicas que deben mantenerse alineadas con el alcance; no sustituyen su autoridad ni se consideran contratos implementados.
 
-- La aplicación local se dirige a macOS y Windows; captura audio del sistema y micrófono y los combina en una pista ([scope, secciones 2 y 5](../MEETINGNOTES_V1_SCOPE.md)).
-- Se muestra un aviso visible y persistente antes del uso. El scope especifica que el aviso no bloquea la captura ni verifica por sí solo el consentimiento de las personas participantes ([scope, línea 14](../MEETINGNOTES_V1_SCOPE.md)).
-- El backend local envía audio a OpenAI para transcribirlo y procesa allí la transcripción para generar resumen y pendientes. La copia local eliminada no elimina datos que el proveedor pudiera conservar ([scope, sección 4](../MEETINGNOTES_V1_SCOPE.md)).
-- Cada computadora tiene historial local en SQLite. El acceso dependerá de la cuenta del sistema operativo; no habrá cuentas de MeetingNotes ni sincronización ([scope, secciones 2 y 5](../MEETINGNOTES_V1_SCOPE.md)).
-- Tras procesamiento exitoso se guardan título, idioma, resumen y pendientes, y se borran audio y transcripción locales. La transcripción no se guarda en el historial ([scope, sección 3](../MEETINGNOTES_V1_SCOPE.md)).
-- Si falla el procesamiento, se descarta la transcripción y el audio permanece local, sin vencimiento automático, hasta reintento o eliminación manual. El historial no tiene eliminación automática ([scope, secciones 2 y 3](../MEETINGNOTES_V1_SCOPE.md)).
+## Reglas de producto aprobadas en v1
 
-Estos hechos describen la lógica de negocio aprobada en el scope; no demuestran por sí solos una aprobación de Producto y Privacidad para realizar el tratamiento. La autoridad documental continúa en discrepancia: AGENTS.md y README.md mantienen el tratamiento como pendiente. MN-01 también indica que no hay evidencia atribuible adjunta de las aprobaciones requeridas ([MN-01, líneas 31 y 42–51](./MN-01-alcance-mvp.md)).
+- MeetingNotes es una aplicación local para macOS y Windows. Captura el audio del sistema y el micrófono y los combina en una sola pista.
+- Antes del uso muestra un aviso visible y persistente. El aviso no bloquea la captura ni verifica por sí mismo el consentimiento de las personas participantes.
+- El backend local envía el audio a OpenAI para transcribirlo y procesar allí la transcripción para generar el resumen y los pendientes. OpenAI es el proveedor aprobado para este flujo.
+- Cada computadora conserva su propio historial en SQLite. El acceso depende de la cuenta del sistema operativo; v1 no tiene cuentas de MeetingNotes ni sincronización.
+- Si el procesamiento termina correctamente, se conserva localmente el título, el idioma elegido, el resumen y los pendientes. Se eliminan el audio y la transcripción locales; la transcripción no forma parte del historial.
+- Si el procesamiento falla, se descarta la transcripción y el audio queda local, sin vencimiento automático, hasta que un reintento termine correctamente o la persona usuaria elimine la captura. Las capturas fallidas se pueden reintentar o eliminar manualmente.
+- Las reuniones guardadas no tienen eliminación automática. La persona usuaria puede eliminar manualmente una reunión y todos sus pendientes.
+- Las copias que el proveedor pudiera conservar se rigen por los controles de la cuenta de OpenAI; eliminar la copia local no las elimina.
 
-## Matriz de flujo y tratamiento de datos
+## Tecnologías aprobadas relevantes
 
-| Etapa y datos | Regla descrita en el scope | Estado de aprobación / revisión pendiente |
+| Área | Decisión de v1 | Detalle que sigue abierto |
 |---|---|---|
-| Aviso y consentimiento; audio de participantes | Aviso visible y persistente antes del uso; no bloquea la captura ni verifica el consentimiento. | Ronald debe revisar la regla. Producto y Privacidad deben confirmar si el aviso y la responsabilidad de obtener consentimiento son suficientes y qué ocurre ante objeciones o retiro del consentimiento. No se presume aprobación de esta política por el aviso existente. |
-| Permisos e indicadores | Captura del sistema y micrófono en macOS y Windows. El scope no define el flujo ante permiso denegado o revocado ni los estados visibles de error. | Definir comportamiento por plataforma, impedir que la interfaz sugiera captura activa cuando no lo está y decidir si una fuente parcial se acepta. La decisión requiere revisión de Producto y Privacidad antes de habilitar captura. |
-| Captura y audio temporal | Se genera una pista combinada local. Tras éxito se elimina la copia local; ante fallo se conserva indefinidamente hasta reintento o borrado manual. | Confirmar con Producto y Privacidad la retención en fallos, reintentos y cierres inesperados, y cómo se gestionan temporales y archivos huérfanos. |
-| Transcripción y proveedor | El scope envía audio a OpenAI para transcribirlo y procesa allí la transcripción para generar notas. | Documentar datos enviados y controles aplicables de la cuenta/proveedor. La eliminación local no elimina posibles copias externas. Privacidad debe revisar la transferencia y su tratamiento antes de autorizarla. |
-| Alternativa de Additional resources | Propone transcribir localmente con Whisper y generar notas con Claude. | Mantener como exploratoria. Si se envía la transcripción a Claude, el contenido de la reunión sale del equipo; identificar payload, destinatario y tratamiento del proveedor antes de considerar esta opción. No equivale a un flujo completamente local. |
-| Notas e historial | Se guardan localmente título, idioma, resumen y pendientes; no se conserva la transcripción en el historial. Acceso según cuenta del sistema operativo. | Revisar acceso local y medidas de seguridad, además de copias, registros, exportaciones y alcance de la eliminación de notas. El scope no especifica esos detalles operativos. |
-| Eliminación y retención externa | Eliminación manual de reunión y pendientes; no hay vencimiento automático de reuniones. Las copias bajo control del proveedor siguen sus propios controles. | Confirmar con Producto y Privacidad qué significa eliminar copias locales y cómo se comunica que esto no elimina datos del proveedor. Definir si logs, respaldos y temporales forman parte del ciclo de vida. |
+| Backend | Bun + Hono. | Integración con la aplicación de escritorio, host y puerto local. |
+| IA y validación | Vercel AI SDK (`ai`) + Zod; OpenAI es el proveedor aprobado. | Modelos concretos y configuración de integración. |
+| Datos | Drizzle + SQL con SQLite local por computadora. | Integración concreta de SQLite y rutas/protección local de archivos. |
+| Acceso | Sin cuentas ni inicio de sesión de MeetingNotes; acceso según la cuenta del sistema operativo. | Protección concreta de archivos locales, credenciales y registros. |
+| Interfaz | React + TypeScript estricto; Tailwind CSS; TanStack Query con fetch nativo. | La arquitectura completa y los detalles de captura nativa siguen sujetos al plan técnico aprobado. |
 
-## Supuestos de trabajo
+No se propone otro proveedor de IA, almacenamiento remoto, autenticación de cuentas ni una tecnología adicional. Las decisiones de esta tabla no amplían el tratamiento aprobado.
 
-- Este ticket se registra como trabajo de trazabilidad y revisión de la lógica ya escrita en el scope; no como una segunda definición funcional ni como autorización para implementar. Motivo: el scope contiene las reglas de negocio anteriores. Si esta interpretación es incorrecta, cambiaría el alcance del plan.
-- El scope se usa como referencia de intención de producto, pero no se considera evidencia suficiente para levantar la restricción de AGENTS.md sobre tratamiento de datos. La discrepancia debe resolverse explícitamente.
-- La mención de Producto y Privacidad identifica áreas de aprobación requeridas por el ticket; no se infieren nombres ni responsables individuales.
+## Matriz de flujo y tratamiento
+
+| Etapa y datos | Requisito aprobado | Revisión pendiente, limitada a detalles no definidos |
+|---|---|---|
+| Aviso y captura | Aviso visible y persistente antes del uso; captura del sistema y micrófono en macOS y Windows, combinados en una pista. El aviso no bloquea la captura ni comprueba el consentimiento de participantes. | Definir permisos e indicadores específicos de cada plataforma, incluyendo permisos denegados o revocados. El comportamiento con una sola fuente disponible no está definido; no se debe asumir que una captura parcial satisface el requisito de combinar ambas fuentes. |
+| Procesamiento exitoso | El audio se envía a OpenAI para transcribirlo y generar las notas. Se guardan localmente título, idioma, resumen y pendientes; se eliminan el audio y la transcripción locales. | Definir la configuración concreta del modelo e integración OpenAI y documentar los controles de la cuenta aplicables. La eliminación local no se describe como eliminación de copias externas. |
+| Fallo y reintento | Se descarta la transcripción. El audio fallido permanece local, sin vencimiento automático, hasta un reintento exitoso o eliminación manual; la captura aparece para reintentar o eliminar. | Definir la recuperación ante cierres inesperados, temporales y archivos huérfanos para que la implementación cumpla el ciclo aprobado. No introducir vencimiento automático ni retención adicional. |
+| Historial y eliminación | Historial local en SQLite, accesible según la cuenta del sistema operativo. No conserva transcripciones ni se elimina automáticamente. La persona usuaria puede editar y eliminar manualmente reuniones con sus pendientes. | Confirmar integración concreta de SQLite y protección local de base de datos, audio fallido y credenciales. Determinar cómo logs o respaldos afectan el cumplimiento, sin añadir copias o retención fuera del alcance. |
 
 ## Preguntas abiertas
 
-### Bloqueantes antes de habilitar captura, transferencia o retención
+Estas preguntas no reabren las decisiones de producto aprobadas; delimitan la implementación y requieren resolución en el plan técnico correspondiente:
 
-1. ¿Se confirma el scope como autoridad vigente para la lógica de negocio pese a la discrepancia registrada en AGENTS.md y README.md?
-2. ¿Producto y Privacidad aprueban el aviso no bloqueante y el hecho de que no verifique el consentimiento de participantes? ¿Qué control adicional, si alguno, se requiere?
-3. ¿Qué debe hacer la aplicación ante permisos denegados, revocados o disponibles para solo una fuente de audio?
-4. ¿Producto y Privacidad aprueban enviar audio y transcripción a OpenAI? ¿Qué información y condiciones externas deben divulgarse antes de usarlo?
-5. ¿La propuesta Whisper + Claude se mantiene solo como referencia exploratoria o se evaluará como alternativa? ¿Qué texto se transferiría a Claude y bajo qué controles?
-6. ¿Se aprueba la retención indefinida del audio tras fallos hasta reintento o eliminación manual? ¿Qué tratamiento aplica a temporales, respaldos, logs y cierres inesperados?
-7. ¿Qué controles de acceso y seguridad se requieren para audio, notas, base de datos local, credenciales y registros? ¿Cómo se define la eliminación efectiva de cada copia?
+1. ¿Cómo se presentan los permisos denegados o revocados y los estados de captura por plataforma sin indicar que se captura cuando no es así?
+2. ¿Qué comportamiento aplica si solo está disponible una fuente de audio? La regla aprobada exige combinar audio del sistema y micrófono; aceptar una fuente parcial requeriría aprobación de un cambio de alcance.
+3. ¿Cómo se recuperan temporales o archivos huérfanos tras un cierre inesperado sin descartar el audio fallido aprobado ni crear retención adicional?
+4. ¿Qué integración de SQLite se usará y cómo se protegerán los archivos locales bajo la cuenta del sistema operativo?
+5. ¿Qué modelo y configuración concreta de OpenAI se usarán, y cómo se administrarán sus credenciales y controles de cuenta?
+6. ¿Qué datos, si alguno, aparecen en logs o respaldos locales? La respuesta debe respetar la ausencia de transcripciones en el historial y no ampliar la retención aprobada.
 
-### Evidencia requerida
+## Alcance de este plan
 
-- Registrar que Ronald revisó la matriz y las decisiones pendientes, incluyendo comentarios y disposición.
-- Identificar la aprobación de Producto y Privacidad para cada decisión de tratamiento que corresponda y enlazar evidencia verificable. El repositorio consultado no nombra a las personas responsables ni adjunta esa evidencia.
+**Incluye:** documentar el flujo aprobado, distinguirlo de detalles técnicos abiertos y registrar la revisión de la matriz y de esas preguntas.
 
-## Alcance
+**Fuera de alcance:** cambiar el aviso, los proveedores, la captura requerida, la retención, el destino de datos o el almacenamiento aprobado; implementar captura o controles; enviar datos reales; definir detalles técnicos por inferencia; realizar una evaluación jurídica por jurisdicción.
 
-**Incluye:** registrar la matriz basada en el scope, separar reglas escritas de aprobaciones demostradas, identificar transferencias locales/externas y dejar pendientes de Producto y Privacidad visibles.
+El plan no sustituye al plan de implementación requerido antes de integrar el producto. Cualquier cambio al comportamiento aprobado requiere una nueva aprobación de alcance.
 
-**Fuera de alcance:** cambiar la lógica de negocio del scope, implementar captura o controles, enviar datos reales, configurar proveedores, decidir retención distinta, realizar una evaluación jurídica por jurisdicción o declarar aprobada una política que aún no tiene evidencia.
+## Criterios de revisión
 
-## Criterios de aceptación verificables
-
-1. La matriz cubre consentimiento, indicadores/permiso, procesamiento local y externo, acceso, almacenamiento, retención, eliminación y notas, y referencia las reglas de negocio existentes en el scope.
-2. La propuesta Whisper + Claude se etiqueta como exploratoria y se identifica la transferencia de la transcripción a Claude si se usa para generar notas.
-3. Se documenta la revisión de Ronald a la matriz y las decisiones pendientes; no se considera cumplido hasta registrar la revisión.
-4. Se identifican las aprobaciones necesarias de Producto y Privacidad y se registra su evidencia cuando ocurra; no se afirma que ya existan.
-5. El ticket y este plan indican que no autorizan por sí solos grabación, transmisión, almacenamiento o retención.
-
-## Estado y patrones actuales
-
-- apps/web, apps/api, packages/contracts y tests son espacios reservados; no hay aplicación de producto ni suite integrada ([AGENTS.md, líneas 7–16](../../AGENTS.md)).
-- Los dos POCs tienen instrucciones y configuración independientes; ninguno es arquitectura aprobada ([README de prototipos](../../apps/prototypes/README.md)).
-- El POC de captura conserva WAV local hasta borrado manual ([README del POC de audio](../../apps/prototypes/poc-record-audio/README.md:11)). El POC OpenAI usa temporales y elimina sus copias al terminar ([README del POC OpenAI](../../apps/prototypes/poc-openai-macos/README.md:8)). Esos comportamientos son evidencia de prototipos, no decisiones de producto.
-- La guía frontend y el contrato contienen propuestas sujetas a revisión. Las rutas de documentación mencionadas en algunos archivos de instrucciones no coinciden exactamente con el árbol actual: el contrato está en docs/api/API_CONTRACT.md; no se observó el archivo temporal docs/MEETINGNOTES_V1_CONTEXT_TEMP.md.
-
-## Impacto por componente
-
-| Componente existente | Responsabilidad / estado | Impacto previsto después de las aprobaciones |
-|---|---|---|
-| docs/MEETINGNOTES_V1_SCOPE.md | Lógica de negocio de v1; declara el alcance aprobado. | Referencia principal de las reglas registradas; cualquier ajuste posterior requiere actualizar su estado y evidencia. Este plan no lo cambia. |
-| docs/api/API_CONTRACT.md | Propuesta de API. | Alinear detalles de permisos, tratamiento, fallos y eliminación una vez aprobados. No cambiar en este ticket. |
-| docs/FRONTEND_API_GUIDE.md | Guía de trabajo propuesta para frontend. | Alinear estados de UI y disclosure después de aprobar la política. No cambiar en este ticket. |
-| apps/web, apps/api, packages/contracts, tests | Espacios reservados, sin producto integrado. | Posible trabajo futuro separado; no se proponen archivos ni implementación en MN-05. |
-| POCs en apps/prototypes | Experimentos independientes. | No integrar ni modificar como resultado de este plan. |
-
-## Contratos, datos y dependencias
-
-El contrato propuesto ya refleja el historial local, audio fallido para reintento/borrado y la ausencia de transcripción en el historial ([API_CONTRACT.md, líneas 49–55](../api/API_CONTRACT.md)). Sus rutas y detalles son propuestas, no contratos aprobados. Este plan no agrega campos, endpoints, esquemas, persistencia o dependencias.
-
-El stack aprobado no determina el proveedor de IA/transcripción, y la elección de base de datos y los detalles de seguridad/tratamiento continúan sujetos a revisión ([AGENTS.md, líneas 20–29 y 46–56](../../AGENTS.md)).
-
-## Riesgos y alternativas
-
-- El aviso no bloqueante podría interpretarse como prueba de consentimiento; la revisión debe aclarar expresamente qué garantiza y qué no.
-- Eliminar una copia local podría confundirse con eliminar datos externos; la interfaz y documentación deberán distinguir ambos alcances si se aprueba procesamiento externo.
-- “Whisper local” no significa que todo el flujo sea local cuando Claude recibe la transcripción.
-- La conservación indefinida de audio de fallos amplía la exposición local; mantenerla, cambiarla o no habilitar la captura son decisiones para Producto y Privacidad, no para este plan.
-
-Alternativas que las personas revisoras pueden valorar: conservar el flujo OpenAI descrito en el scope con divulgación y controles aprobados; evaluar la referencia Whisper + Claude con su transferencia externa claramente identificada; o no habilitar procesamiento hasta completar las aprobaciones. Este plan no selecciona ninguna.
+- La matriz refleja el aviso, captura combinada, procesamiento OpenAI, acceso local, historial, reintentos, retención y eliminación tal como están definidos en el alcance aprobado.
+- Las tecnologías mencionadas coinciden con el stack de v1; OpenAI es el único proveedor de IA considerado en este plan y SQLite es el almacenamiento local aprobado.
+- Cada pendiente se limita a un detalle no definido y no cambia el comportamiento, destino ni retención de datos autorizados.
+- Se documenta la revisión solicitada a Ronald, Producto y Privacidad, junto con comentarios o decisiones sobre los detalles pendientes. Esa revisión no reabre el alcance aprobado.
+- El documento no se presenta como autorización para implementar arquitectura pendiente ni para apartarse del alcance.
 
 ## Secuencia de trabajo
 
-1. Ronald revisa esta matriz y confirma si representa fielmente la lógica del scope y sus preguntas pendientes.
-2. Producto y Privacidad resuelven y registran la autoridad documental y las decisiones de consentimiento, permisos, transferencias, acceso, seguridad, retención y eliminación.
-3. Se actualiza el scope o los documentos técnicos pertinentes con referencias a esas decisiones aprobadas.
-4. Cualquier implementación se planifica y autoriza como trabajo separado, después de resolver los bloqueos de tratamiento.
+1. Revisar la matriz contra el alcance aprobado y registrar comentarios de Ronald, Producto y Privacidad.
+2. Resolver los detalles técnicos abiertos como parte del plan de implementación aprobado, sin asumir opciones por inferencia.
+3. Si alguna revisión propone cambiar una regla de producto aprobada, actualizar primero el alcance y registrar esa nueva aprobación.
+4. Planificar e implementar el producto como trabajo separado, de acuerdo con las instrucciones del repositorio.
 
 ## Validación
 
-La validación de este plan es documental: comprobar cobertura de cada criterio contra la matriz y sus referencias; verificar que las propuestas se distinguen de decisiones aprobadas; y registrar la revisión de Ronald y las aprobaciones de Producto y Privacidad. No se ejecutarán comandos de producto ni pruebas como parte del plan; las instrucciones indican que no hay suite integrada y que no se ejecuten comandos de POCs sin solicitud expresa.
+La validación de este plan es documental: verificar los criterios de revisión, confirmar que los enlaces apuntan a la fuente vigente y comprobar que las preguntas pendientes no contradicen las reglas aprobadas. No se ejecutan comandos de producto ni de los POCs como parte de esta revisión.
 
 ## Reversión
 
-No aplica reversión de software o datos porque este plan solo registra requisitos y decisiones. Los cambios futuros de política deberán actualizar los documentos que los contienen y conservar un registro de aprobación; cualquier reversión de implementación requerirá un plan separado que considere datos ya capturados y transferidos.
-
-## Decisiones para revisión humana
-
-- Confirmar la autoridad del scope frente a las instrucciones generales del repositorio.
-- Confirmar si la regla de consentimiento del scope es suficiente y precisar permisos denegados/revocados e indicadores.
-- Aprobar o rechazar explícitamente el flujo OpenAI y revisar la alternativa exploratoria Whisper + Claude.
-- Aprobar almacenamiento, acceso, seguridad, retención, fallos y eliminación para copias locales y externas.
-- Registrar la revisión de Ronald y las aprobaciones de Producto y Privacidad con evidencia.
+No aplica reversión de software o datos porque MN-05 solo registra requisitos y decisiones. Cualquier reversión futura de implementación requiere un plan separado que considere los datos ya capturados y transferidos.

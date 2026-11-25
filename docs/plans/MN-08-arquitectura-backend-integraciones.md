@@ -1,124 +1,191 @@
-# MN-08 | Revisar la arquitectura de backend e integraciones después de aprobar UX
+# MN-08 | Implementar el backend local de MeetingNotes v1
 
-**Estado:** Borrador para revisión humana; no aprobado.  
-**Condición de inicio:** revisar recorrido UX, wireframes, alcance del producto y requisitos de privacidad antes de comenzar el análisis de arquitectura.  
-**Responsable del informe:** Marco.  
-**Revisión prevista:** Ronald aprueba la recomendación.
+**Estado:** Aprobado por Marco el 25 de noviembre de 2026.
 
-> Este plan organiza una revisión de arquitectura dentro del alcance aprobado de v1. No autoriza implementación ni ampliaciones del alcance; la captura, el envío a OpenAI y la retención local de audio fallido siguen limitados a las reglas de [scope de v1](../MEETINGNOTES_V1_SCOPE.md).
+**Objetivo:** convertir las decisiones vigentes de producto y tecnología en un plan verificable para implementar el backend local de v1.
 
-## Objetivo
+**Resultado esperado:** backend integrado Bun + Hono para macOS y Windows, con captura local, procesamiento con OpenAI, persistencia SQLite y API alineada con el alcance aprobado.
 
-Preparar un informe de decisiones sobre límites potenciales de servicios e integraciones de backend para que Ronald lo revise y apruebe.
+**Prioridad solicitada:** completar el trabajo con urgencia; este plan no estima ni garantiza una fecha de entrega.
 
-## Condición de inicio y estado actual
+> Este plan queda aprobado para implementar el backend descrito dentro del alcance vigente. La actualización de MN-08 no implementa ni publica código. La captura, el envío a OpenAI y la retención local de audio siguen estrictamente las reglas del [alcance v1](../decisions/MEETINGNOTES_V1_SCOPE.md).
 
-La condición de inicio **no está acreditada por los documentos encontrados**:
+## Objetivo y resultado
 
-| Requisito previo | Evidencia disponible | Estado |
+Implementar el backend que soporta el flujo aprobado de v1: iniciar y detener la captura local del sistema y el micrófono en una sola pista, procesar una captura completa con OpenAI, guardar localmente la reunión y sus pendientes, y permitir consultar, editar, eliminar o reintentar según corresponda.
+
+El backend será un proceso local separado con Bun + Hono, accesible solo en `127.0.0.1:4174`. Usará SQLite mediante `bun:sqlite` y Drizzle, helpers nativos de captura para macOS y Windows, Zod y las integraciones OpenAI adoptadas en el registro técnico. No se añade shell de escritorio, nube, cuentas ni sincronización.
+
+## Autoridad, fuentes y discrepancias
+
+| Fuente | Estado | Uso en este plan |
 |---|---|---|
-| Revisar el recorrido de UX | [MN-03](./MN-03-arquitectura-informacion.md) sigue como borrador y requiere revisión de Ronald. | Pendiente |
-| Revisar wireframes | [MN-04](./MN-04-wireframes.md) aprueba preparar wireframes estáticos, pero indica que Ronald aún debe revisarlos. No se encontró un artefacto de wireframes independiente en el repositorio. | Pendiente |
-| Revisar el alcance | El scope de v1 está aprobado y coincide con [AGENTS.md](../../AGENTS.md) y [README.md](../../README.md): aplicación local, SQLite y OpenAI. MN-08 mantiene esas decisiones como base. | Aclarado |
-| Revisar requisitos de privacidad | [MN-05](./MN-05-privacidad-seguridad-ciclo-vida-datos.md) sigue como borrador; falta revisar su matriz y registrar las preguntas operativas pendientes. Las aprobaciones adicionales aplican a decisiones no definidas por el scope o a cambios del tratamiento aprobado. | Pendiente |
+| [AGENTS.md](../../AGENTS.md) | Instrucción vigente del repo | Límites, stack base y requisito de aprobar un plan antes de cambios de código. Aún muestra varias decisiones como pendientes. |
+| [Alcance de producto v1](../decisions/MEETINGNOTES_V1_SCOPE.md) | Aprobado | Autoridad para funciones, plataformas, datos, retención y límites de producto. |
+| [Decisiones técnicas del MVP](../decisions/TECH_DESITIONS_MVP.md) | Registra decisiones adoptadas por la persona usuaria el 25 de noviembre de 2026 | Base técnica concreta para integración local, captura, SQLite, OpenAI, estados y recuperación. Indica que no sustituye la aprobación del plan de implementación. |
+| [Contrato API](../api/API_CONTRACT.md) | Propuesta; no contrato final | Punto de partida que debe actualizarse antes de implementar las rutas y payloads. |
+| [Guía frontend](../api/FRONTEND_API_GUIDE.md) | Guía basada en la propuesta API | Debe quedar alineada con el flujo asíncrono antes de integrar el cliente. |
+| [MN-03](./MN-03-arquitectura-informacion.md) | Aprobado por Marco | Requisitos de consulta, edición, eliminación y lista de capturas fallidas. |
+| [MN-04](./MN-04-wireframes.md) | Plan de wireframes aprobado; revisión de wireframes pendiente | Los wireframes no son un contrato técnico. Confirmar que la revisión no cambia el comportamiento de backend. |
+| [MN-10](./MN-10-modelo-datos-reuniones-transcripciones-notas.md) | Borrador no aprobado | Evidencia de cuestiones abiertas en esquema, campos, migraciones y límites entre datos transitorios y persistentes. |
+| [POC de captura](../../apps/prototypes/poc-record-audio/README.md) y [POC OpenAI](../../apps/prototypes/poc-openai-macos/README.md) | Experimentos separados | Evidencia técnica y de comportamiento; ninguno es una arquitectura de producto aprobada. |
 
-[MN-01](./MN-01-alcance-mvp.md) se registra como ejecutado según confirmación de Marco y documenta que la discrepancia de autoridad sobre el scope quedó resuelta. Esto no sustituye la evidencia de las revisiones de UX, wireframes y privacidad que MN-08 requiere.
+**Discrepancia documental que debe resolverse antes de codificar:** `AGENTS.md` y `README.md` aún indican que el driver de SQLite, los modelos/configuración de OpenAI y varios detalles de operación local están pendientes. `TECH_DESITIONS_MVP.md` registra que esas decisiones fueron adoptadas. Antes del primer cambio de código, actualizar o aclarar esos documentos para que las instrucciones vigentes no contradigan la decisión más reciente. No cambiar el alcance aprobado.
 
-## Fuentes y autoridad
+**Estado de privacidad:** `TECH_DESITIONS_MVP.md`, sección 8, registra aprobación de Producto y Privacidad declarada por la persona usuaria, y mantiene pendiente la revisión de Ronald, incluido el tratamiento ante objeción o retiro del consentimiento. No atribuirle aprobación. No usar audio real para verificar el flujo hasta cumplir las aprobaciones y condiciones de privacidad aplicables.
 
-- [Instrucciones del repositorio](../../AGENTS.md): aprueban Bun + Hono, Drizzle + SQL con SQLite local, Vercel AI SDK + Zod y OpenAI como proveedor de v1. Siguen pendientes el mecanismo concreto de integración de SQLite, los modelos y detalles de OpenAI, el modo de renderizado y la operación local. Nube, SSO y sincronización quedan fuera de v1.
-- [Scope de v1](../MEETINGNOTES_V1_SCOPE.md): aprobado; define una aplicación local con SQLite, procesamiento con OpenAI y sus reglas de negocio y tratamiento. MN-08 no reabre la base de datos ni el proveedor: documenta como pendientes sus detalles concretos de integración y los modelos/configuración de OpenAI.
-- [Contrato API](../api/API_CONTRACT.md): propuesta técnica alineada al scope; sus rutas y detalles permanecen sujetos a revisión.
-- [Guía frontend](../FRONTEND_API_GUIDE.md): guía basada en una API propuesta, no un contrato implementado.
-- [README de prototipos](../../apps/prototypes/README.md): los POCs son experimentos aislados, no una arquitectura de producto aprobada.
+No se encontró una plantilla de planes aprobada. Se conserva este archivo y el formato Markdown existente; eso no establece una plantilla normativa.
 
-## Hechos, supuestos y preguntas abiertas
+## Hechos comprobables
 
-### Hechos
+- El alcance exige aplicación local en macOS y Windows, historial SQLite, captura combinada, idioma es/en por reunión, consulta y edición de título/resumen/pendientes, eliminación manual y las reglas de retención de audio y transcripción del scope.
+- Las decisiones técnicas adoptan API Bun + Hono en `127.0.0.1:4174`, helper Swift/Core Audio en macOS, helper Python/PyAudioWPatch/WASAPI en Windows, `bun:sqlite` + `drizzle-orm/bun-sqlite`, migraciones SQL versionadas, `gpt-transcribe` por REST con segmentos de 20 MiB y solapamiento breve, y AI SDK + OpenAI para notas estructuradas.
+- El procesamiento debe correr en segundo plano con estado durable. El reintento es manual con el mismo `captureId`; no hay reintentos automáticos ni timeout propio por llamada. Al reiniciar, trabajos en `transcribing` o `summarizing` pasan a `failed`; la transcripción transitoria se descarta y el audio queda para reintento.
+- Los estados adoptados son `starting → capturing → stopping → ready → transcribing → summarizing → completed`, con `failed` ante error. Las capturas fallidas se listan con `limit=20` por defecto, cursor opaco y `failureCode`; los errores usan `{ error: { code, message } }` sanitizado.
+- `meetingDate` y el borrado individual de un pendiente están excluidos por las decisiones técnicas. La transcripción no se persiste ni se expone.
+- `apps/api/`, `packages/contracts/` y `tests/` contienen solo `.gitkeep`. No existe backend, esquema Drizzle, migración ni suite integrada de producto.
+- Los dos POCs tienen manifiestos y lockfiles propios. El POC de captura persiste y expone WAVs de una manera incompatible con el ciclo de vida del producto; el POC OpenAI es solo macOS, usa estado en memoria y elimina audio ante fallo. Ambos requieren adaptación y no deben copiarse como producto sin aplicar las reglas de v1.
+- `MN-03` está aprobado. `MN-04` aprueba preparar wireframes, pero la revisión de Ronald está pendiente. Esto no cambia los requisitos de datos del scope; cualquier cambio de comportamiento surgido de la revisión se debe evaluar antes de alterar el contrato.
 
-- El stack base aprobado para el trabajo es Bun + Hono, Drizzle + SQL y Vercel AI SDK + Zod.
-- El producto no tiene una API integrada, contratos compartidos implementados ni suite consolidada: `apps/api/`, `packages/contracts/` y `tests/` son espacios reservados.
-- El scope de v1 y las instrucciones vigentes establecen SQLite local y OpenAI para v1. No están pendientes esas elecciones; sí lo están la integración concreta de SQLite y los modelos/configuración de OpenAI.
-- El contrato de API actual es una propuesta; no debe confundirse con un contrato aprobado para implementación.
+## Supuestos de trabajo
 
-### Supuestos de trabajo
+| Supuesto | Motivo | Impacto si resulta falso / cómo confirmarlo |
+|---|---|---|
+| “Backend de v1” incluye los adaptadores de captura de ambas plataformas y todas las operaciones backend necesarias para guardar, editar, borrar y reintentar. | Es el alcance de v1 y las decisiones técnicas adoptadas describen ambos helpers. | Si “listo” significa un incremento menor, se debe recortar y aprobar el alcance del incremento antes de implementarlo. |
+| La ubicación inicial del proceso API es `apps/api/`, hoy un espacio reservado. | El mapa del repositorio reserva ese directorio para la API. | Confirmarlo al aprobar el plan; no mover ni integrar los POCs completos. |
+| No se crea workspace ni manifiesto raíz; API y web conservan procesos y manifiestos separados. | Decisión técnica del MVP. | Si la operación local requiere otra distribución, necesita decisión y aprobación adicionales. |
 
-- El informe será de análisis y recomendación, no una especificación lista para codificar. Si se espera detalle de implementación, habrá que ampliar el alcance después de la revisión.
-- Los límites se expresarán como responsabilidades conceptuales y no como nombres de paquetes, servicios desplegables o archivos existentes.
-- Las alternativas se compararán dentro del stack aprobado. Cualquier dependencia o tecnología adicional se identificará como propuesta sujeta a aprobación.
+## Preguntas abiertas y bloqueos de implementación
 
-### Preguntas abiertas
+Estas preguntas no cambian el alcance de producto. Deben resolverse en la etapa de contrato/diseño antes de implementar los comportamientos afectados.
 
-1. ¿Qué evidencia registrará la revisión de Ronald del recorrido UX y de los wireframes?
-2. ¿Qué detalles de integración siguen abiertos para SQLite y OpenAI, y cómo se documentarán sin reabrir sus elecciones de v1?
-3. ¿Qué requisitos de privacidad y seguridad siguen abiertos para integrar el flujo aprobado con OpenAI, y qué detalles adicionales requerirían aprobación antes de implementarse?
-4. ¿El informe debe limitarse a arquitectura conceptual o incluir contratos candidatos con ejemplos de payloads, errores e idempotencia?
-5. ¿Qué alternativas técnicas dentro del stack y del alcance aprobados deben compararse?
+1. **Contrato asíncrono:** ¿qué responde la solicitud que inicia el procesamiento, qué endpoint consulta el estado y cómo se obtiene el `meetingId` al completar? La decisión técnica exige trabajo en segundo plano y sondeo, pero el contrato y la guía frontend aún dicen que `POST /api/meetings` espera la respuesta completa y que no existe recurso de operación. Debe quedar una única semántica acordada y reflejada en ambos documentos.
+2. **Reenvío e idempotencia:** la decisión exige no duplicar una reunión por `captureId`, pero la API no define respuestas para captura ocupada, reintento concurrente o cierre entre respuesta de OpenAI y transacción SQLite. Definir esos resultados sin prometer procesamiento exactamente una vez en OpenAI ni ocultar el riesgo de costo repetido ya documentado.
+3. **Modelo físico:** `MN-10` es borrador. Antes de migrar, cerrar campos/nullabilidad, formato de IDs, marcas de tiempo, claves/relaciones, restricciones para impedir reuniones duplicadas por captura y orden/paginación del historial. Mantener fuera transcripción y `meetingDate`; no agregar puntos clave, decisiones o categorías nuevas.
+4. **Seguridad de la API local:** acordar el origen de navegador permitido y las defensas contra solicitudes de otros sitios a `127.0.0.1`. La API se liga a loopback y no hay login en v1; el contrato no define CORS ni protecciones por origen. No agregar cuentas ni dependencias sin aprobación.
+5. **Sistema de archivos:** definir cómo informar y recuperar errores al crear directorios, mover, borrar o leer audio y al aplicar permisos del sistema operativo. Las rutas de datos y la ausencia de cifrado propio o copias automáticas ya están adoptadas; los fallos concretos de operaciones de archivo no.
+6. **Validación en Windows:** identificar un equipo Windows disponible para verificar el helper y el ciclo completo. El POC documenta que su captura WASAPI debe probarse en Windows; no se puede declarar compatibilidad probada con una revisión solo en macOS.
 
-## Alcance del informe futuro
+## Alcance
 
-El informe comparará límites y responsabilidades potenciales para:
+### Incluido
 
-- Interfaz y API local.
-- Captura por plataforma y su frontera con el backend, sin seleccionar helper o mecanismo de captura.
-- Integración con OpenAI para transcribir y generar notas, manteniendo pendientes los modelos y la configuración concreta.
-- Validación de entradas y salidas con Zod y el papel del Vercel AI SDK.
-- Persistencia local mediante Drizzle + SQL con SQLite, manteniendo pendiente el mecanismo concreto de integración de SQLite.
-- Contratos relacionados con metadatos de reuniones, ciclo de vida de transcripciones y notas.
-- Errores, reintentos, idempotencia, procesamiento síncrono o en segundo plano, solo como alternativas a comparar.
-- Implicaciones de privacidad y seguridad de cada flujo de datos.
+- API local Hono en Bun en el host y puerto adoptados, con validación de entrada/salida Zod y errores sanitizados.
+- Adaptación de la captura nativa aprobada para macOS y Windows. Se requieren ambas fuentes; si una falla, no se acepta audio parcial. Solo una captura confirmada completa se procesa.
+- Persistencia local SQLite mediante Drizzle y migraciones SQL versionadas aplicadas antes de aceptar solicitudes.
+- Integración de transcripción con `gpt-transcribe` por REST y generación estructurada de resumen/pendientes con AI SDK, Zod, idioma de reunión y configuración acordada.
+- Estados durables de captura y procesamiento, reintento manual, recuperación al reiniciar, lista paginada de fallidas y eliminación manual del audio fallido.
+- Operaciones de consulta, edición y eliminación de reuniones y pendientes dentro de los límites aprobados.
+- Aplicar el ciclo de vida del scope: al éxito conservar reunión y pendientes y borrar audio/transcripción locales; ante fallo de procesamiento descartar transcripción y conservar el audio sin vencimiento automático hasta reintento o eliminación manual.
+- Alinear `API_CONTRACT.md` y `FRONTEND_API_GUIDE.md` con las decisiones adoptadas antes de integrar clientes.
 
-Quedan fuera cambiar SQLite u OpenAI por otra base de datos o proveedor, el despliegue en nube, SSO, sincronización, versiones, estructura de workspaces, agregar dependencias e implementar. El modo de renderizado también queda fuera de este informe. La integración concreta de SQLite, los modelos/configuración de OpenAI y la operación de la API local siguen como decisiones técnicas pendientes.
+### Excluido
 
-## Alternativas que debe evaluar el informe
+- Construir o rediseñar la interfaz web completa, un shell de escritorio, instalador o mecanismo empaquetado de arranque.
+- Cuentas de MeetingNotes, inicio de sesión, nube, SSO, sincronización entre computadoras o proveedores distintos de OpenAI.
+- Guardar/exponer transcripciones, eliminar automáticamente audio fallido o reuniones, guardar audio de éxito, añadir respaldos automáticos o cifrado propio.
+- `meetingDate`, eliminación individual de `ActionItem`, marcar pendientes como completados o categorías adicionales de notas.
+- Integrar los POCs como aplicaciones completas o copiar su tratamiento de WAVs, estado en memoria o limpieza de error.
+- Publicar, crear remoto de GitHub o desplegar el backend.
 
-- SQLite local está definido para v1. La integración concreta se deja para el trabajo técnico posterior; este informe no compara SQLite con otras bases de datos ni selecciona un mecanismo de integración.
-- OpenAI está definido como proveedor para v1. Los modelos, la configuración y los detalles de integración siguen pendientes; no se compararán proveedores alternativos.
-- Responsabilidades dentro de una API local frente a adaptadores o procesos separados, explicando costos operativos, límites y consecuencias sin fijar arquitectura ni salir del alcance local.
-- Mecanismos de procesamiento compatibles con la respuesta completa esperada por el scope, sin cambiar el comportamiento de producto ni el contrato aprobado.
-- Nube, SSO y sincronización quedan fuera de v1; solo se reconsiderarán si se aprueba un alcance futuro que los incluya.
+## Contratos, datos y límites externos
 
-Cada alternativa técnica dentro del alcance aprobado debe presentar ventajas, desventajas, supuestos y riesgos, e identificar cualquier aprobación adicional necesaria si propone cambiar ese alcance. La recomendación de Marco debe indicar qué opción favorece y por qué; Ronald debe aprobarla antes de considerar cerradas las decisiones técnicas pendientes.
+| Elemento | Base adoptada | Trabajo previo a implementación |
+|---|---|---|
+| `Meeting` y `ActionItem` | Título, idioma, resumen y pendientes editables; borrar una reunión borra sus pendientes. | Cerrar esquema SQL y validaciones sin añadir campos fuera del scope. |
+| `Capture` | `captureId` opaco; referencia de archivo solo privada al backend; estados y recuperación durables. | Definir almacenamiento de metadata y transiciones inválidas/concurrentes. |
+| Capturas fallidas | `{ items, nextCursor }`, `limit=20` inicial, cursor opaco; elementos con `captureId`, estado, fechas y `failureCode`. | Alinear el contrato y definir catálogo estable de códigos. No incluir ruta, audio, transcripción ni error interno de proveedor. |
+| Procesamiento | Segundo plano, idioma es/en, mismo `captureId` en reintento manual, sin timeout ni reintentos automáticos. | Cerrar la forma HTTP de inicio/consulta/resultado y sus respuestas de conflicto. |
+| OpenAI | Transcripción por endpoint de audio; notas con generación estructurada y `store: false`; credencial solo en servidor. | Validar esquema Zod; evitar logs de clave, audio, transcripción, prompts y contenido de reunión. |
+| Datos locales | Rutas macOS/Windows y directorio `failed-audio/` definidos en decisiones técnicas. | Resolver fallos parciales del sistema de archivos y permisos concretos sin cambiar retención ni crear backups. |
 
-## Impacto actual y componentes
+El contrato actual conserva `meetingDate`, usa `processing` y describe procesamiento síncrono. Esos puntos son discrepancias documentales, no decisiones que deban sobrevivir a la implementación. El contrato y la guía frontend deberán cambiar juntos una vez acordada la semántica asíncrona.
 
-No hay componentes de backend de producto que modificar. El informe considerará responsabilidades conceptuales asociadas a `apps/api/`, `apps/web/`, `packages/contracts/` y los adaptadores necesarios, pero esos espacios están reservados y vacíos. Los POCs pueden aportar observaciones; no se asumirán como base del producto.
+## Componentes afectados
 
-## Contratos, datos y dependencias
+| Componente actual | Estado y evidencia | Cambio previsto |
+|---|---|---|
+| `apps/api/` | Solo `.gitkeep`; reservado para API de producto. | Implementar proceso API, configuración local, casos de uso, adaptadores, persistencia y rutas. La estructura interna se definirá después de aprobar los límites del plan. |
+| `packages/contracts/` | Solo `.gitkeep`; no hay decisión de workspace o contrato compartido implementado. | Decidir en la etapa de contrato si se usa para tipos compartidos o se mantienen contratos por proceso; no asumir importaciones/estructura por inferencia. |
+| `tests/` | Solo `.gitkeep`; no hay suite integrada. | Añadir la validación aprobada que necesite el backend, sin afirmar que existe infraestructura ni agregar dependencias nuevas sin aprobación. |
+| POC de captura | Código Bun/Hono y helpers Swift/Python independientes. | Referencia para el protocolo helper/API; adaptación selectiva de captura al flujo durable y privado de v1. |
+| POC OpenAI | Código Bun con flujo macOS, transcripción y notas en memoria. | Referencia para formato de audio/OpenAI; adaptación necesaria para persistencia, estados, retención y AI SDK adoptado. |
+| `docs/api/API_CONTRACT.md` y `docs/api/FRONTEND_API_GUIDE.md` | Propuestas desalineadas con el procesamiento asíncrono adoptado. | Alinear contrato, estados, reintentos, respuesta y sondeo antes de implementar clientes. |
+| `AGENTS.md` y `README.md` | Aún marcan como pendientes varias decisiones registradas como adoptadas. | Corregir la discrepancia de autoridad y rutas de documentación antes del primer cambio de código; no ampliar el scope. |
 
-- El análisis cubrirá contratos candidatos para metadatos de reunión, transcripción y notas; no creará ni aprobará campos, endpoints, estados o esquemas.
-- El informe distinguirá la transcripción temporal de las notas persistidas y seguirá las reglas de tratamiento y retención ya aprobadas para v1; no propondrá retención adicional.
-- Se utilizará como marco el stack aprobado. No se agregarán dependencias ni versiones.
-- SQLite y OpenAI son elecciones aprobadas para v1. Permanecen abiertos el mecanismo concreto de integración de SQLite, los modelos/configuración de OpenAI y los detalles de operación local. Nube, SSO y sincronización están fuera de v1; el modo de renderizado no forma parte de este informe.
+## Dependencias
 
-## Riesgos y mitigaciones
+- Tecnologías adoptadas: Bun + Hono; Drizzle + SQL con SQLite local por computadora; `bun:sqlite` y `drizzle-orm/bun-sqlite`; Vercel AI SDK + Zod; OpenAI como proveedor.
+- Decisiones técnicas registran `gpt-transcribe` para transcripción, `ai` + `@ai-sdk/openai` y `gpt-6.2-sol` para notas, además de versiones concretas. Se usarán según el registro aprobado, sujeto a resolver la discrepancia documental antes de codificar.
+- No se propone tecnología ni dependencia nueva. Los POCs tienen lockfiles independientes y no autorizan crear un workspace raíz.
+- La clave OpenAI se configura solo en el servidor por el mecanismo local documentado en las decisiones; no se copia al navegador ni se incluye en el repositorio.
 
-- **Iniciar antes de las revisiones:** exigir evidencia de los requisitos previos que sigan pendientes antes de comenzar el informe técnico.
-- **Reabrir decisiones aprobadas:** tratar SQLite y OpenAI como elecciones de producto ya definidas, y distinguirlas de sus detalles de integración aún pendientes.
-- **Confundir análisis con autorización de ampliaciones:** identificar las fronteras de datos y limitar el informe al flujo aprobado con OpenAI; no usar datos reales ni configurar proveedores durante esta actividad.
-- **Usar los POCs como arquitectura aprobada:** presentar su código como evidencia experimental únicamente.
-- **Cerrar contratos demasiado pronto:** etiquetar campos, rutas, estados y payloads como candidatos hasta que Ronald los apruebe.
+## Alternativas relevantes
 
-## Secuencia de trabajo
+| Tema | Evidencia / alternativa | Estado para este plan |
+|---|---|---|
+| Procesamiento síncrono o asíncrono | `API_CONTRACT.md` propone esperar la respuesta completa; `TECH_DESITIONS_MVP.md` adopta procesamiento en segundo plano durable. | La decisión adoptada es background. Se debe actualizar contrato y guía; la semántica HTTP precisa queda abierta en la pregunta 1. |
+| Estado de trabajo | Sondeo de la captura existente frente a un recurso de operación separado. | La decisión técnica requiere que la interfaz consulte estado; la forma del recurso no está adoptada. Comparar y acordar antes de implementar. |
+| POCs | Mantenerlos aislados frente a adaptar su captura y flujo OpenAI al producto. | El plan permite adaptación selectiva bajo las decisiones adoptadas; no convierte ninguno en arquitectura completa ni cambia sus directorios. |
+| Base de datos/proveedor | SQLite local y OpenAI frente a otros destinos. | SQLite y OpenAI están adoptados para v1; no se reabren ni se comparan alternativas fuera del alcance. |
 
-1. Confirmar y enlazar la revisión de UX, wireframes, scope y privacidad; mantener MN-08 en espera mientras falte evidencia.
-2. Alinear el informe con el scope aprobado y separar sus reglas vigentes de las decisiones técnicas y controles operativos aún pendientes.
-3. Inventariar límites actuales y decisiones técnicas sin inferir componentes implementados.
-4. Preparar el informe comparativo de servicios, datos, contratos e integraciones dentro del stack aprobado.
-5. Marco entrega el informe a Ronald y registra comentarios, aprobación y decisiones aún abiertas.
-6. Planificar cualquier implementación como trabajo separado, después de las aprobaciones correspondientes.
+## Secuencia de implementación propuesta
+
+1. **Aprobar este plan** y registrar cualquier recorte del objetivo “backend v1”. No tocar código antes de esa aprobación.
+2. **Alinear autoridad y documentos:** reconciliar `AGENTS.md`/`README.md` con las decisiones adoptadas y corregir enlaces a `MEETINGNOTES_V1_SCOPE.md`; confirmar que las revisiones UX/privacidad pendientes no cambian este alcance.
+3. **Cerrar el contrato asíncrono y modelo de datos:** actualizar API y guía frontend en una sola revisión; resolver respuesta de inicio, consulta, reintento, resultado final, captura fallida, idempotencia, `captureId`/reunión y esquema de migración. No añadir campos excluidos.
+4. **Preparar la aplicación API:** crear manifiesto/lockfile propios de `apps/api/` según el patrón aprobado, inicializar Hono y validar el host/puerto local, configuración de OpenAI y el límite de origen local.
+5. **Crear persistencia durable:** definir esquema Drizzle y migraciones SQL; preparar rutas locales por sistema operativo; aplicar migraciones antes de escuchar y fallar el arranque si una migración no puede aplicarse.
+6. **Integrar la captura:** implementar estados y protocolo con helper por plataforma; manejar permisos, salida inesperada, audio incompleto y errores sin aceptar mezcla parcial. Confirmar `ready` solo tras validar el WAV completo.
+7. **Implementar procesamiento durable:** orquestar la transcripción en segmentos de 20 MiB con solapamiento breve, generación estructurada, validación Zod, creación de reunión única por captura, limpieza al éxito y conservación de audio al fallo.
+8. **Completar operaciones API:** salud, captura/status/stop, proceso y consulta de estado, lista paginada/borrado de fallidas, historial/detalle/edición/eliminación de reuniones y edición de pendientes, todos alineados al contrato aprobado.
+9. **Validar recuperación y ambas plataformas:** revisar transiciones, cierre/reinicio, reintento, no duplicación local, eliminación, sanitización, rutas/permisos y flujo completo en macOS y Windows. Registrar cualquier cobertura no verificable por falta de equipo.
+10. **Entregar para revisión:** documentar qué criterios se verificaron, limitaciones por plataforma y pasos locales confirmados. No publicar ni desplegar.
 
 ## Criterios de aceptación verificables
 
-1. Hay evidencia registrada de revisión del recorrido UX y los wireframes por Ronald.
-2. El informe usa como autoridad el scope aprobado y registra la revisión de privacidad y los requisitos operativos aún pendientes antes de iniciar el análisis.
-3. Marco entrega un informe de decisiones con alternativas, ventajas, desventajas, supuestos, riesgos y aprobaciones pendientes.
-4. El informe mantiene SQLite y OpenAI como elecciones de v1, y señala como pendientes el mecanismo concreto de integración de SQLite, los modelos/configuración de OpenAI y los detalles locales de host, puerto e inicio junto a la aplicación de escritorio. Excluye nube, SSO y sincronización.
-5. El informe no reabre las elecciones aprobadas de SQLite y OpenAI, no decide por inferencia los detalles técnicos que siguen abiertos y no inicia la implementación.
-6. Ronald revisa el informe y sus decisiones quedan registradas.
+1. El backend escucha solo en `127.0.0.1:4174`; la protección por origen local acordada evita solicitudes de páginas no autorizadas según el diseño aprobado.
+2. Una migración válida se aplica antes de aceptar solicitudes; un fallo de migración impide iniciar la API sin modificar datos de manera silenciosa.
+3. El inicio, estado y detención de captura funcionan con ambos helpers; si falta una fuente, el helper falla o el archivo WAV no está completo, no se procesa una captura parcial.
+4. El procesamiento usa el idioma de la reunión, valida la salida estructurada y crea como máximo una reunión local por `captureId`, incluso ante reenvíos concurrentes según la semántica acordada.
+5. La consulta muestra estados durables hasta `completed` o `failed`; después de reiniciar, un trabajo interrumpido sigue la recuperación adoptada y permite reintento manual con el mismo audio.
+6. En éxito se conservan reunión y pendientes y se borran las copias locales de audio y transcripción. En fallo se descarta la transcripción y se conserva el audio sin vencimiento automático hasta reintento o borrado manual.
+7. La lista de capturas fallidas es paginada y solo entrega los campos adoptados; respuestas y logs no exponen claves, audio, transcripciones, prompts, rutas ni mensajes internos de OpenAI.
+8. Consulta, edición y eliminación de reuniones cumplen el alcance; eliminar una reunión elimina sus pendientes; no existe borrado individual de pendiente ni `meetingDate` en el contrato.
+9. El contrato API y la guía frontend describen el mismo flujo asíncrono, estados, respuestas y recuperación.
+10. La validación documenta resultados por macOS y Windows. No se declara probado un sistema operativo que no se haya verificado en un equipo de esa plataforma.
 
-## Validación y reversión
+## Validación
 
-La validación será documental: comprobar que se cumplieron las condiciones de inicio, que las alternativas cubren los criterios y que cada decisión conserva su estado y evidencia. No hay código de producto que validar y no se ejecutan comandos ni pruebas.
+El repo no tiene comandos ni suite de producto consolidados en la raíz. Cada POC documenta sus propios comandos y lockfile; esos comandos no validan por sí solos la aplicación integrada. La validación de implementación deberá usar los scripts que se documenten en el manifiesto propio de `apps/api/` una vez aprobado y creado, más comprobaciones manuales de permisos/helpers en macOS y Windows. No se inventan ni se ejecutan comandos como parte de este plan.
 
-La reversión no aplica a este plan documental. Cualquier implementación posterior deberá definir su propio plan de cambios, migración y reversión antes de afectar datos o integraciones.
+La matriz de verificación debe cubrir entradas inválidas, límites del estado de captura, WAV incompleto, estados durable/reinicio, salida de IA inválida, idempotencia local, caída entre etapas, limpieza/retención, eliminación, cursores y filtrado de errores/logs. Las pruebas de integración con OpenAI no usarán reuniones reales ni enviarán datos distintos al flujo aprobado.
+
+## Riesgos y mitigaciones
+
+- **Contrato contradictorio:** bloquear implementación de handlers hasta acordar y reflejar el flujo asíncrono en contrato y guía.
+- **Pérdida o retención incorrecta de audio:** probar rutas de éxito, fallo, reinicio y borrado; no usar limpieza de los POCs como referencia normativa.
+- **Duplicados o costos repetidos:** impedir reuniones duplicadas localmente por captura; informar que una caída tras una solicitud aceptada por OpenAI puede requerir otro procesamiento/costo.
+- **Exposición desde localhost:** definir orígenes permitidos y validar peticiones; no exponer API en interfaces de red externas.
+- **Fugas de datos:** evitar contenido sensible, claves, rutas y transcripciones en logs y respuestas; no persistir transcripciones ni crear vencimientos/backups no aprobados.
+- **Migración destructiva:** revisar cambios de esquema antes de aplicarlos; no prometer rollback, backup o recuperación de datos que el producto no tiene definidos.
+- **Diferencias de plataforma:** captura Windows requiere verificación real en Windows; revisión en macOS no acredita el comportamiento WASAPI.
+- **Suposición de código reutilizable:** los POCs tienen tratamientos incompatibles con v1. Adaptar solo el comportamiento acordado y mantener separados sus manifiestos y lockfiles.
+
+## Reversión
+
+La reversión de este documento es restaurar una versión previa de MN-08. Para la implementación, el plan de migración de datos debe describir compatibilidad y riesgos antes de ejecutarse. No hay política aprobada de backup ni se promete rollback que restaure datos locales. Ante una migración o fallo de archivos, la implementación debe fallar de forma visible y conservar los datos que no estén autorizados a borrarse; el comportamiento exacto de recuperación se debe concretar en los pasos de esquema y sistema de archivos.
+
+## Aprobación registrada y puertas previas a implementación
+
+Marco indicó explícitamente que el resultado deseado era dejar aprobado el plan y no iniciar la implementación en este encargo. Se registra esa instrucción como aprobación de MN-08 el 25 de noviembre de 2026. La aprobación cubre este plan dentro del alcance vigente; no amplía v1, no autoriza publicación/despliegue y no declara cumplidos los criterios de aceptación.
+
+Antes de implementar las áreas afectadas, se deben completar y registrar estas puertas:
+
+1. Alinear `AGENTS.md` y `README.md` con las decisiones adoptadas en `TECH_DESITIONS_MVP.md`, sin cambiar el alcance.
+2. Acordar y reflejar en API y guía la semántica asíncrona, el estado consultable y la relación entre `captureId` y `meetingId`.
+3. Cerrar esquema físico, idempotencia, manejo de concurrencia y protección del origen local antes de implementar rutas y migraciones.
+4. Registrar si la revisión de Ronald pendiente en privacidad debe completarse antes de pruebas que envíen audio a OpenAI; no usar grabaciones reales hasta cumplir las aprobaciones y condiciones aplicables.
+5. Verificar captura y flujo completo en macOS y Windows; no declarar probada una plataforma sin evidencia de ejecución en ella.
+
+La aprobación del plan no significa que el trabajo se haya implementado: esta actualización modifica únicamente el documento MN-08.
