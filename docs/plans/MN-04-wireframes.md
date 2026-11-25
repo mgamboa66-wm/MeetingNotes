@@ -1,6 +1,6 @@
 # MN-04 | Crear wireframes para configuración, captura y revisión de notas
 
-**Estado:** Aprobado por la persona usuaria para preparar wireframes estáticos.  
+**Estado:** Aprobado por Marco para preparar wireframes estáticos.  
 **Fecha de aprobación del plan:** 2026-11-24.  
 **Revisión de wireframes:** pendiente; Ronald debe revisarlos.
 
