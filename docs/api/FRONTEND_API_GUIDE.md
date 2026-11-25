@@ -1,6 +1,6 @@
 # MeetingNotes — guía de integración para frontend
 
-**Estado:** guía alineada con el [contrato API del backend v1](API_CONTRACT.md) y las decisiones aprobadas el 25 de noviembre de 2026. La aplicación web de producto aún no está implementada.
+**Estado:** guía alineada con el [contrato API del backend v1](API_CONTRACT.md) y el backend MN-08. La aplicación web de producto aún no está implementada.
 
 ## Responsabilidad del frontend
 
@@ -10,9 +10,9 @@ El frontend trabaja con un **captureId** opaco. No construye rutas de archivos, 
 
 ## Flujo
 
-1. **Iniciar captura** — llamar a **POST /api/captures** y guardar el **captureId** devuelto.
-2. **Mostrar estado o nivel** — consultar **GET /api/captures/{captureId}** mientras la captura está activa. El nivel, si está presente, es un número entre 0 y 1.
-3. **Detener captura** — llamar a **POST /api/captures/{captureId}/stop**. La respuesta **ready** indica que el backend dejó el archivo combinado listo.
+1. **Iniciar captura** — llamar a **POST /api/captures** y guardar el **captureId** devuelto. La respuesta incluye el estado actual; si es `failed`, mostrar el error y no intentar detenerla.
+2. **Mostrar estado o nivel** — consultar **GET /api/captures/{captureId}** hasta que pase a `capturing`; el nivel, si está presente, es un número entre 0 y 1. Si pasa a `failed`, mostrar el error.
+3. **Detener captura** — cuando el estado sea `capturing`, llamar a **POST /api/captures/{captureId}/stop**. La respuesta **ready** indica que el backend dejó el archivo combinado listo.
 4. **Iniciar procesamiento** — solicitar el idioma y llamar a **POST /api/meetings** con **captureId** y **outputLanguage**. No enviar audio, transcripción, resumen ni pendientes. La API devuelve HTTP 202 con el `captureId` y estado.
 5. **Consultar progreso** — sondear **GET /api/captures/{captureId}** hasta `completed` o `failed`. En `completed`, usar el `meetingId` devuelto para cargar **GET /api/meetings/{meetingId}** y actualizar historial/caché.
 6. **Recuperar fallos** — al abrir la aplicación, consultar **GET /api/captures?status=failed&limit=20&cursor=...**. Reintentar con un POST manual a **POST /api/meetings** usando el mismo `captureId`, o eliminar con **DELETE /api/captures/{captureId}**.
@@ -25,11 +25,8 @@ No hay un recurso Operation separado: el `captureId` permite consultar el trabaj
 
 **POST /api/captures** no requiere body.
 
-    type CaptureStarted = {
-      captureId: string;
-      status: 'capturing';
-      startedAt: string;
-    };
+    // POST /api/captures devuelve el estado durable actual, que puede ser failed si no pudo arrancar.
+    type CaptureStarted = CaptureState;
 
 ### Estado de captura
 
@@ -46,9 +43,13 @@ No hay un recurso Operation separado: el `captureId` permite consultar el trabaj
     type CaptureState = {
       captureId: string;
       status: CaptureStatus;
+      startedAt: string;
       level?: number; // 0..1
       updatedAt: string;
       meetingId?: string; // presente cuando status === 'completed'
+      completedAt?: string;
+      failedAt?: string;
+      failureCode?: string;
     };
 
 No asumir expiración automática. El resultado completado puede consultarse por `meetingId`; el backend conserva metadata de estado pero elimina el audio.
@@ -62,7 +63,7 @@ No asumir expiración automática. El resultado completado puede consultarse por
     type CreateMeetingRequest = {
       captureId: string;
       outputLanguage: OutputLanguage;
-      title?: string | null;
+      title?: string;
     };
 
     type ProcessAccepted = {
@@ -122,7 +123,7 @@ No hay ruta para borrar pendientes individuales; eliminar una reunión elimina t
 
 ## Errores para la interfaz
 
-Formato común propuesto:
+Formato común:
 
     {
       "error": {
@@ -137,7 +138,7 @@ Interpretación sugerida:
 - **403:** origen de navegador ausente o no permitido.
 - **404:** el recurso no existe; no implica expiración automática.
 - **409:** parámetros incompatibles o captura en estado que no permite la acción; refrescar estado antes de actuar.
-- **502 / 503:** falló OpenAI o una dependencia; mostrar el error y refrescar la cola de capturas fallidas para ofrecer reintentar o eliminar el audio.
+- **503:** falta la configuración de OpenAI antes de iniciar. Si un trabajo ya aceptado falla, el HTTP original sigue siendo 202 y el sondeo devuelve `status: 'failed'` con un `failureCode`; refrescar la cola para ofrecer reintentar o eliminar el audio.
 - **500:** error local inesperado; consultar el historial y la cola de fallidas antes de volver a enviar para reducir el riesgo de duplicar una reunión.
 
 El cliente debe basarse en códigos estables, no en texto libre. No mostrar errores internos, rutas, claves, prompts ni detalles que expongan datos de la reunión.
@@ -154,6 +155,6 @@ El cliente debe basarse en códigos estables, no en texto libre. No mostrar erro
 - No hay cuentas, login ni sincronización en v1. El historial es local a cada computadora.
 - El uso de OpenAI y el tratamiento de audio descrito en el alcance v1 están aprobados. La eliminación local no elimina datos que el proveedor pudiera conservar conforme a los controles vigentes de la cuenta.
 
-## Detalles aún por cerrar
+## Detalles de cliente aún por definir
 
-El catálogo completo de `failureCode` y errores, el orden estable de la paginación del historial y el sondeo/backoff elegido por la interfaz siguen por concretarse. No reabrir el `202` con sondeo por `captureId`, la exclusión de `meetingDate`, la lista paginada de fallidas ni la política de reintento manual.
+La SPA aún debe elegir su intervalo/backoff de sondeo y conectar las mutaciones a TanStack Query. El contrato ya fija los códigos de fallo, el orden y cursor del historial, el `202` con sondeo por `captureId`, la exclusión de `meetingDate`, la lista paginada de fallidas y la política de reintento manual.
