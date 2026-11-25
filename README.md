@@ -4,7 +4,7 @@ MeetingNotes convierte conversaciones de reuniones en un resumen y una lista de 
 
 ## Estado del proyecto
 
-El alcance de producto de v1 está aprobado y se describe en [docs/MEETINGNOTES_V1_SCOPE.md](docs/MEETINGNOTES_V1_SCOPE.md). El producto será una aplicación local para macOS y Windows, con historial local en SQLite y procesamiento con OpenAI. El alcance no equivale a un plan técnico de implementación ni significa que la aplicación integrada ya exista.
+El alcance de producto de v1 está aprobado y se describe en [docs/decisions/MEETINGNOTES_V1_SCOPE.md](docs/decisions/MEETINGNOTES_V1_SCOPE.md). Las decisiones técnicas adoptadas están en [TECH_DESITIONS_MVP.md](docs/decisions/TECH_DESITIONS_MVP.md). El backend aún no está integrado; [MN-08](docs/plans/MN-08-arquitectura-backend-integraciones.md) es el plan aprobado para implementarlo y no significa que el código ya exista.
 
 El repositorio contiene dos POCs independientes. Todavía no contiene una aplicación de producto integrada ni un manifiesto raíz de dependencias o workspace. El contrato API y la guía para frontend son propuestas de trabajo alineadas al alcance aprobado.
 
@@ -31,10 +31,12 @@ El documento de alcance aprobado contiene las reglas de negocio completas, compa
     tests/                 # reservado; sin suite del producto
     docs/
       api/
-        API_CONTRACT.md    # propuesta técnica de contrato API
-      FRONTEND_API_GUIDE.md
-      MEETINGNOTES_V1_SCOPE.md
-      plans/               # planes con estados individuales
+        API_CONTRACT.md
+        FRONTEND_API_GUIDE.md
+      decisions/
+        MEETINGNOTES_V1_SCOPE.md
+        TECH_DESITIONS_MVP.md
+      plans/               # planes con estados individuales, incluido MN-08 aprobado
 
 Los directorios reservados no significan que la aplicación, el workspace o la arquitectura estén implementados o aprobados.
 
@@ -47,24 +49,22 @@ Cada POC conserva su propio manifiesto, lockfile e instrucciones en su README. N
 
 ## Stack técnico aprobado
 
-- **Frontend:** React con TypeScript estricto. Vike (vike-react) se recomienda para rutas basadas en archivos y permite SSR, SPA o SSG según las necesidades. Vite es su motor integrado y normalmente no se configura por separado.
-- **Backend:** Bun + Hono.
-- **Datos:** Drizzle + SQL con SQLite local por computadora. La integración concreta de SQLite (better-sqlite3 o integración de Bun) sigue pendiente. MongoDB requiere aprobación adicional.
-- **IA y validación:** Vercel AI SDK (ai) y Zod para validar datos y esquemas de herramientas. OpenAI es el proveedor aprobado para el flujo v1; los modelos y detalles concretos de integración siguen pendientes.
+- **Frontend:** React + TypeScript estricto en una SPA Vite para el MVP.
+- **Backend:** API Bun + Hono como proceso separado en `127.0.0.1:4174`; helpers nativos para macOS y Windows.
+- **Datos:** Drizzle + SQL con SQLite local; el MVP adopta `bun:sqlite`, `drizzle-orm/bun-sqlite`, rutas de datos por sistema operativo y migraciones versionadas.
+- **IA y validación:** Vercel AI SDK + Zod; OpenAI es el proveedor aprobado y los modelos/configuración adoptados se documentan en `TECH_DESITIONS_MVP.md`.
+- **API backend:** proceso en `127.0.0.1:4174`, procesamiento asíncrono consultable por `captureId`, unicidad de reuniones por captura y orígenes SPA locales fijados en la sección 9 del registro técnico.
 - **Interfaz y estado remoto:** Tailwind CSS y TanStack Query con fetch nativo. Zustand se usará solo si React Context no resulta suficiente.
 - **Autenticación:** v1 no tendrá cuentas ni inicio de sesión. Si se aprueba un despliegue futuro en la nube, se usará el gateway SSO compartido.
 
-La aprobación del stack y el alcance no determina versiones de dependencias, modo de renderizado, integración de los POCs, estructura de workspaces, arquitectura completa ni detalles de implementación.
+El detalle técnico adoptado se registra en [TECH_DESITIONS_MVP.md](docs/decisions/TECH_DESITIONS_MVP.md). Los POCs siguen siendo experimentos separados; MN-08 autoriza la implementación del backend descrito, no la conversión íntegra de un POC en producto.
 
 ## Decisiones técnicas pendientes
 
-- Permisos y detalles de captura nativa, y recuperación ante interrupciones en cada plataforma.
-- Modelos y configuración de OpenAI.
-- Integración de SQLite, ruta y protección local de los archivos de audio fallidos.
-- Reintentos, idempotencia, timeouts y recuperación ante cierre inesperado.
-- Host y puerto local e integración de la API con la aplicación de escritorio.
-- Detalles de la lista de capturas fallidas, paginación y eliminación individual de pendientes.
-- Versiones de dependencias, modo de renderizado (SSR, SPA o SSG), CI y publicación.
+- Tipos/nullabilidad finales de SQLite, orden/cursor de historial, catálogo de errores y casos de fallo del sistema de archivos.
+- Verificación real de captura Windows en un equipo Windows.
+- Revisión pendiente de Ronald sobre objeciones o retiro del consentimiento; no atribuirle aprobación.
+- CI y publicación, fuera del plan backend vigente.
 
 El alcance completo de v1 y las decisiones de negocio no deben volver a marcarse como pendientes. Cualquier ampliación o cambio de ese alcance requiere aprobación.
 
