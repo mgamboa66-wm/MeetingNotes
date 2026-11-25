@@ -10,9 +10,9 @@ El frontend trabaja con un **captureId** opaco. No construye rutas de archivos, 
 
 ## Flujo
 
-1. **Iniciar captura** — llamar a **POST /api/captures** y guardar el **captureId** devuelto.
-2. **Mostrar estado o nivel** — consultar **GET /api/captures/{captureId}** mientras la captura está activa. El nivel, si está presente, es un número entre 0 y 1.
-3. **Detener captura** — llamar a **POST /api/captures/{captureId}/stop**. La respuesta **ready** indica que el backend dejó el archivo combinado listo.
+1. **Iniciar captura** — llamar a **POST /api/captures** y guardar el **captureId** devuelto. La respuesta incluye el estado actual; si es `failed`, mostrar el error y no intentar detenerla.
+2. **Mostrar estado o nivel** — consultar **GET /api/captures/{captureId}** hasta que pase a `capturing`; el nivel, si está presente, es un número entre 0 y 1. Si pasa a `failed`, mostrar el error.
+3. **Detener captura** — cuando el estado sea `capturing`, llamar a **POST /api/captures/{captureId}/stop**. La respuesta **ready** indica que el backend dejó el archivo combinado listo.
 4. **Iniciar procesamiento** — solicitar el idioma y llamar a **POST /api/meetings** con **captureId** y **outputLanguage**. No enviar audio, transcripción, resumen ni pendientes. La API devuelve HTTP 202 con el `captureId` y estado.
 5. **Consultar progreso** — sondear **GET /api/captures/{captureId}** hasta `completed` o `failed`. En `completed`, usar el `meetingId` devuelto para cargar **GET /api/meetings/{meetingId}** y actualizar historial/caché.
 6. **Recuperar fallos** — al abrir la aplicación, consultar **GET /api/captures?status=failed&limit=20&cursor=...**. Reintentar con un POST manual a **POST /api/meetings** usando el mismo `captureId`, o eliminar con **DELETE /api/captures/{captureId}**.
@@ -25,11 +25,8 @@ No hay un recurso Operation separado: el `captureId` permite consultar el trabaj
 
 **POST /api/captures** no requiere body.
 
-    type CaptureStarted = {
-      captureId: string;
-      status: 'starting';
-      startedAt: string;
-    };
+    // POST /api/captures devuelve el estado durable actual, que puede ser failed si no pudo arrancar.
+    type CaptureStarted = CaptureState;
 
 ### Estado de captura
 

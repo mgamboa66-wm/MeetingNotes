@@ -91,17 +91,18 @@ Respuesta 200:
 
 Inicia la captura local mediante el componente nativo de la plataforma. No recibe audio ni una ruta de archivo. El audio del sistema y el micrófono se combinan en una sola pista.
 
-Respuesta 201. El body refleja el inicio; consultar la captura puede devolver un estado más reciente:
+Respuesta 201. El body refleja el estado durable de la captura al responder. Si el helper no puede arrancar de forma síncrona, el estado puede ser `failed` e incluir `failedAt` y `failureCode`; si inicia, normalmente será `starting` y luego avanzará a `capturing`. Consultar la captura devuelve el estado más reciente:
 
     {
       "captureId": "cap_opaque_value",
       "status": "starting",
-      "startedAt": "2026-11-24T10:00:00-06:00"
+      "startedAt": "2026-11-24T10:00:00.000Z",
+      "updatedAt": "2026-11-24T10:00:00.000Z"
     }
 
 #### GET /api/captures/{captureId}
 
-Devuelve el estado durable de una captura. Mientras está capturando puede incluir el nivel de audio normalizado entre 0 y 1. En `completed` incluye `meetingId`. No incluye rutas locales ni audio.
+Devuelve el estado durable de una captura. Esperar a `capturing` antes de permitir detenerla y comprobar `failed` antes de enviar la petición de stop. Mientras captura puede incluir el nivel de audio normalizado entre 0 y 1. En `completed` incluye `meetingId`; `failed` incluye `failedAt` y `failureCode`. No incluye rutas locales ni audio.
 
 Respuesta 200:
 
