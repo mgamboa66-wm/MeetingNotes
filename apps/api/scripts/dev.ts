@@ -1,7 +1,9 @@
 import { join } from 'node:path'
 import { prepareWindowsCapture, runInherited } from './platform'
+import { startTestUi } from './test-ui'
 
 const apiDirectory = join(import.meta.dir, '..')
+const watch = process.argv.includes('--watch')
 
 if (process.platform === 'darwin') {
   process.stdout.write('Compilando el helper de captura para macOS…\n')
@@ -19,7 +21,17 @@ if (process.platform === 'darwin') {
   process.exit(1)
 }
 
-const watch = process.argv.includes('--watch')
+let stopTestUi = () => {}
+if (watch) {
+  try {
+    const testUi = startTestUi()
+    stopTestUi = () => testUi.stop(true)
+    process.stdout.write('Panel de prueba disponible en http://127.0.0.1:5173\n')
+  } catch {
+    process.stderr.write('No se pudo iniciar el panel de prueba en el puerto 5173; la API continuará.\n')
+  }
+}
+
 const api = Bun.spawn([
   process.execPath,
   ...(watch ? ['--watch'] : []),
@@ -33,8 +45,10 @@ const api = Bun.spawn([
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => {
+    stopTestUi()
     if (api.exitCode === null) api.kill(signal)
   })
 }
 
 process.exitCode = await api.exited
+stopTestUi()

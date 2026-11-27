@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MeetingNotes · Panel de prueba</title>
+  <style>
+    :root { color-scheme: light; font: 16px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #182321; background: #f3f6f5; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .notice { position: sticky; top: 0; z-index: 1; padding: 12px 20px; color: #453400; background: #fff2c8; border-bottom: 1px solid #e4d28c; text-align: center; }
+    main { width: min(760px, calc(100% - 32px)); margin: 40px auto; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+    h1 { margin: 0; font-size: clamp(1.6rem, 5vw, 2.2rem); letter-spacing: -.04em; }
+    h2 { margin: 0 0 16px; font-size: 1.15rem; }
+    p { margin: 8px 0; }
+    .subtle { color: #5b6865; }
+    .card { margin: 16px 0; padding: 24px; background: #fff; border: 1px solid #dce4e1; border-radius: 16px; box-shadow: 0 4px 16px #17352b0a; }
+    .health, .status { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 11px; background: #e9efed; color: #43504c; font-size: .9rem; }
+    .health::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #899591; }
+    .health.ok::before { background: #13805b; }
+    .health.error::before { background: #c23b32; }
+    .status { font-size: 1rem; font-weight: 650; }
+    .status.good { color: #0b684a; background: #e6f5ee; }
+    .status.bad { color: #9b302b; background: #fff0ee; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+    button { min-height: 44px; padding: 10px 16px; border: 0; border-radius: 10px; font: inherit; font-weight: 650; cursor: pointer; background: #125e49; color: #fff; }
+    button.secondary { background: #e8efec; color: #1e3931; }
+    button:disabled { cursor: not-allowed; opacity: .48; }
+    label { display: block; margin: 16px 0 6px; font-weight: 600; }
+    input, select { width: 100%; min-height: 44px; padding: 9px 11px; border: 1px solid #aab8b3; border-radius: 9px; background: #fff; color: inherit; font: inherit; }
+    .meter { height: 8px; margin-top: 14px; overflow: hidden; border-radius: 99px; background: #e8efec; }
+    .meter > span { display: block; width: 0; height: 100%; background: #26a276; transition: width .2s ease; }
+    .error-text { color: #9b302b; }
+    .result-summary { white-space: pre-wrap; }
+    ul { padding-left: 22px; }
+    li { margin: 10px 0; }
+    .item-meta { display: block; color: #5b6865; font-size: .9rem; }
+    [hidden] { display: none !important; }
+    @media (max-width: 520px) { main { margin: 24px auto; } .card { padding: 18px; } header { align-items: flex-start; flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <aside class="notice"><strong>Aviso:</strong> informa a las personas antes de grabar. La captura se realiza localmente; al procesarla, el audio se envía a OpenAI.</aside>
+  <main>
+    <header>
+      <div>
+        <h1>MeetingNotes</h1>
+        <p class="subtle">Panel local para probar captura, resumen y pendientes.</p>
+      </div>
+      <span id="apiHealth" class="health">Conectando con la API…</span>
+    </header>
+
+    <section class="card" aria-labelledby="captureHeading">
+      <h2 id="captureHeading">1. Graba una reunión</h2>
+      <p id="captureStatus" class="status" role="status" aria-live="polite">Listo para grabar</p>
+      <p id="captureDetail" class="subtle">El backend captura el audio del sistema y el micrófono.</p>
+      <div class="meter" aria-label="Nivel de audio"><span id="audioLevel"></span></div>
+      <div class="actions">
+        <button id="startButton" type="button">Iniciar grabación</button>
+        <button id="stopButton" class="secondary" type="button" disabled>Detener grabación</button>
+      </div>
+    </section>
+
+    <section id="processCard" class="card" aria-labelledby="processHeading" hidden>
+      <h2 id="processHeading">2. Genera las notas</h2>
+      <p class="subtle">Al continuar, el backend envía el audio a OpenAI para transcribirlo y generar las notas.</p>
+      <label for="meetingTitle">Título (opcional)</label>
+      <input id="meetingTitle" type="text" maxlength="200" placeholder="Ej. Planificación semanal">
+      <label for="language">Idioma de las notas</label>
+      <select id="language">
+        <option value="es">Español</option>
+        <option value="en">English</option>
+      </select>
+      <div class="actions"><button id="processButton" type="button">Generar resumen y pendientes</button></div>
+    </section>
+
+    <section id="resultCard" class="card" aria-labelledby="resultHeading" hidden>
+      <h2 id="resultHeading">3. Resultado</h2>
+      <p id="resultTitle" class="subtle"></p>
+      <h3>Resumen</h3>
+      <p id="summary" class="result-summary"></p>
+      <h3>Pendientes</h3>
+      <ul id="actionItems"></ul>
+    </section>
+
+    <p id="errorMessage" class="error-text" role="alert" hidden></p>
+    <div class="actions"><button id="resetButton" class="secondary" type="button" hidden>Nueva reunión</button></div>
+  </main>
+
+  <script>
+    const API = 'http://127.0.0.1:4174/api';
+    const el = (id) => document.getElementById(id);
+    const statusLabels = {
+      starting: 'Iniciando captura…', capturing: 'Grabando', stopping: 'Cerrando el audio…', ready: 'Audio listo',
+      transcribing: 'Transcribiendo…', summarizing: 'Preparando resumen y pendientes…', completed: 'Reunión lista', failed: 'La captura o el procesamiento falló',
+    };
+    let captureId = null;
+    let captureStatus = 'idle';
+    let busy = false;
+
+    async function request(path, options = {}) {
+      const response = await fetch(`${API}${path}`, { cache: 'no-store', ...options });
+      if (response.status === 204) return null;
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error?.message || `Error HTTP ${response.status}`);
+      return body;
+    }
+
+    function showError(message) {
+      el('errorMessage').textContent = message;
+      el('errorMessage').hidden = false;
+    }
+
+    function clearError() {
+      el('errorMessage').textContent = '';
+      el('errorMessage').hidden = true;
+    }
+
+    function setCapture(capture) {
+      captureStatus = capture.status;
+      const status = el('captureStatus');
+      status.textContent = statusLabels[capture.status] || capture.status;
+      status.className = `status${capture.status === 'failed' ? ' bad' : capture.status === 'ready' || capture.status === 'completed' ? ' good' : ''}`;
+      el('captureDetail').textContent = capture.status === 'failed'
+        ? `Código: ${capture.failureCode || 'UNKNOWN'}`
+        : capture.captureId ? `ID de captura: ${capture.captureId}` : 'El backend captura el audio del sistema y el micrófono.';
+      el('audioLevel').style.width = `${Math.round((capture.level || 0) * 100)}%`;
+      el('startButton').disabled = busy || Boolean(captureId) || ['starting', 'capturing', 'stopping', 'transcribing', 'summarizing'].includes(capture.status);
+      el('stopButton').disabled = busy || capture.status !== 'capturing';
+      el('processCard').hidden = capture.status !== 'ready';
+      el('resetButton').hidden = !['completed', 'failed'].includes(capture.status);
+    }
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    async function waitForCapture(done) {
+      while (true) {
+        await delay(800);
+        const capture = await request(`/captures/${encodeURIComponent(captureId)}`);
+        setCapture(capture);
+        if (done(capture)) return capture;
+      }
+    }
+
+    async function monitorCapture() {
+      while (captureId && captureStatus === 'capturing') {
+        await delay(900);
+        const id = captureId;
+        const capture = await request(`/captures/${encodeURIComponent(id)}`);
+        if (id !== captureId) return;
+        setCapture(capture);
+      }
+    }
+
+    async function checkApi() {
+      try {
+        await request('/health');
+        el('apiHealth').textContent = 'API conectada';
+        el('apiHealth').className = 'health ok';
+      } catch {
+        el('apiHealth').textContent = 'API no disponible';
+        el('apiHealth').className = 'health error';
+      }
+    }
+
+    el('startButton').addEventListener('click', async () => {
+      clearError(); busy = true; el('startButton').disabled = true;
+      try {
+        const capture = await request('/captures', { method: 'POST' });
+        captureId = capture.captureId;
+        setCapture(capture);
+        if (capture.status === 'starting') await waitForCapture((value) => value.status !== 'starting');
+        if (captureStatus === 'failed') showError(`No se pudo iniciar la captura (${el('captureDetail').textContent}).`);
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        busy = false;
+        if (captureId && captureStatus !== 'starting') setCapture({ captureId, status: captureStatus });
+        else el('startButton').disabled = false;
+        if (captureStatus === 'capturing') monitorCapture().catch((error) => showError(error.message));
+      }
+    });
+
+    el('stopButton').addEventListener('click', async () => {
+      if (!captureId) return;
+      clearError(); busy = true; setCapture({ captureId, status: 'stopping' });
+      try {
+        const capture = await request(`/captures/${encodeURIComponent(captureId)}/stop`, { method: 'POST' });
+        setCapture(capture);
+      } catch (error) {
+        showError(error.message);
+        try { setCapture(await request(`/captures/${encodeURIComponent(captureId)}`)); } catch { /* Mantener el último estado visible. */ }
+      } finally {
+        busy = false;
+        if (captureId) {
+          try { setCapture(await request(`/captures/${encodeURIComponent(captureId)}`)); } catch { /* El mensaje de error ya está visible. */ }
+        }
+      }
+    });
+
+    el('processButton').addEventListener('click', async () => {
+      if (!captureId) return;
+      clearError(); busy = true; el('processButton').disabled = true;
+      try {
+        const title = el('meetingTitle').value.trim();
+        await request('/meetings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ captureId, outputLanguage: el('language').value, ...(title ? { title } : {}) }),
+        });
+        const capture = await waitForCapture((value) => value.status === 'completed' || value.status === 'failed');
+        if (capture.status === 'failed') {
+          showError(`No se pudieron generar las notas (${capture.failureCode}). Si el fallo ocurrió durante el procesamiento, el audio se conserva localmente para reintentar o eliminarlo.`);
+          return;
+        }
+        const meeting = await request(`/meetings/${encodeURIComponent(capture.meetingId)}`);
+        el('resultTitle').textContent = meeting.title || 'Reunión sin título';
+        el('summary').textContent = meeting.summary;
+        const list = el('actionItems');
+        list.replaceChildren();
+        if (meeting.actionItems.length === 0) {
+          const item = document.createElement('li'); item.textContent = 'No se detectaron pendientes.'; list.append(item);
+        }
+        for (const action of meeting.actionItems) {
+          const item = document.createElement('li');
+          item.append(document.createTextNode(action.task));
+          const metadata = [action.assignee, action.dueDateText].filter(Boolean).join(' · ');
+          if (metadata) { const detail = document.createElement('span'); detail.className = 'item-meta'; detail.textContent = metadata; item.append(detail); }
+          list.append(item);
+        }
+        el('resultCard').hidden = false;
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        busy = false;
+        el('processButton').disabled = false;
+        if (captureId && ['completed', 'failed'].includes(captureStatus)) setCapture({ captureId, status: captureStatus });
+      }
+    });
+
+    el('resetButton').addEventListener('click', () => {
+      captureId = null; captureStatus = 'idle'; clearError();
+      el('resultCard').hidden = true; el('processCard').hidden = true;
+      el('meetingTitle').value = ''; el('audioLevel').style.width = '0';
+      el('captureStatus').textContent = 'Listo para grabar'; el('captureStatus').className = 'status';
+      el('captureDetail').textContent = 'El backend captura el audio del sistema y el micrófono.';
+      el('startButton').disabled = false; el('stopButton').disabled = true; el('resetButton').hidden = true;
+    });
+
+    checkApi();
+    setInterval(checkApi, 3000);
+  </script>
+</body>
+</html>
